@@ -136,3 +136,6 @@ if __name__ == "__main__":
     print(SEPARATOR)
     
     # print(f"last_hidden: {last_hidden}")
+
+# Compat alias so callers using the WM-side name also work on this VLM interface.
+_CosmosReason2_Interface.build_vlm_inputs = _CosmosReason2_Interface.build_qwenvl_inputs

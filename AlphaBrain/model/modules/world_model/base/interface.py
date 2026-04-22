@@ -177,6 +177,11 @@ class WorldModelVLMInterface(nn.Module):
             }
         )
 
+    # Compat alias for framework code that calls the name used by real VLM interfaces
+    # (Florence / QwenVL / CosmosReason). Keeps WM-based checkpoints loadable by
+    # QwenGR00T.predict_action / forward without branching on interface type.
+    build_qwenvl_inputs = build_vlm_inputs
+
     def forward(
         self,
         pixel_values: torch.Tensor,

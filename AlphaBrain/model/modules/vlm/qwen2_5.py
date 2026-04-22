@@ -338,3 +338,6 @@ if __name__ == "__main__":
 
     model = _QWen_VL_Interface(config=cfg)
     pass
+
+# Compat alias so callers using the WM-side name also work on this VLM interface.
+_QWen_VL_Interface.build_vlm_inputs = _QWen_VL_Interface.build_qwenvl_inputs

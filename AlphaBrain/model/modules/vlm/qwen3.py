@@ -210,3 +210,6 @@ if __name__ == "__main__":
     cfg.framework.qwenvl.base_vlm = "./playround/Pretrained_models/Qwen3-VL-4B-Instruct"
     qwen_vl = _QWen3_VL_Interface(cfg)
     pass
+
+# Compat alias so callers using the WM-side name also work on this VLM interface.
+_QWen3_VL_Interface.build_vlm_inputs = _QWen3_VL_Interface.build_qwenvl_inputs

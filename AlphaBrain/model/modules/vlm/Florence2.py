@@ -195,3 +195,6 @@ if __name__ == "__main__":
     print(f"forward_vlm last_hidden_state shape: {outputs.last_hidden_state.shape}")
     print(f"forward_vlm hidden_states length: {len(outputs.hidden_states)}")
 
+
+# Compat alias so callers using the WM-side name also work on this VLM interface.
+_Florence_Interface.build_vlm_inputs = _Florence_Interface.build_qwenvl_inputs
