@@ -1,5 +1,8 @@
-# Copyright 2025 VLA-Engine. All rights reserved.
+# Copyright 2025 starVLA community. All rights reserved.
 # Licensed under the MIT License, Version 1.0 (the "License"); 
+# Implemented by [Shijie LIAN/ Huazhong University of Science & Technology] in [2026].
+# Design and Merged by [Jinhui YE / HKUST University] in [2026].
+
 
 import torch
 from torch.nn.utils.rnn import pad_sequence

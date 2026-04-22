@@ -13,7 +13,7 @@
   <img src="assets/main_fig.png" width="100%" alt="AlphaBrain Architecture Overview"/>
 </p>
 
-**AlphaBrain** is the world’s first all-in-one, open-source community for embodied intelligence, built to be ready out of the box. We unifies multiple VLA architectures, world model backbones, biologically-inspired learning algorithms, and reinforcement learning paradigms under a single, extensible framework. AlphaBrain brings embodied AI within everyone’s reach.
+**AlphaBrain** is an all-in-one, open-source community for embodied intelligence, built to be ready out of the box. We unifies multiple VLA architectures, world model backbones, biologically-inspired learning algorithms, and reinforcement learning paradigms under a single, extensible framework. AlphaBrain brings embodied AI within everyone’s reach.
 
 [Quick Start & Documentation](#-quick-start--documentation) · [Key Features](#-key-features) · [Community](#-community) · [Citation](#-citation)
 
@@ -134,7 +134,7 @@ We welcome contributions from the community — including new frameworks, benchm
 
 ### Acknowledgments
 
-AlphaBrain stands on the shoulders of an incredible open-source ecosystem. We are deeply grateful to the authors and maintainers of the following projects, whose code, models, datasets, and ideas directly enabled this work:
+AlphaBrain is mainly forked from [starVLA](https://github.com/starVLA/starVLA) and stands on the shoulders of an incredible open-source ecosystem. We are deeply grateful to the authors and maintainers of the following projects, whose code, models, datasets, and ideas directly enabled this work:
 
 - [starVLA/starVLA](https://github.com/starVLA/starVLA)
 - [openvla/openvla](https://github.com/openvla/openvla)
@@ -171,5 +171,5 @@ AlphaBrain stands on the shoulders of an incredible open-source ecosystem. We ar
 This project is licensed under the [MIT License](LICENSE).
 
 <div align="center">
-<sub>Built with passion by the AlphaBrain Community</sub>
+<sub>Built with passion by the AlphaBrain Community upon starVLA</sub>
 </div>

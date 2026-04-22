@@ -1,4 +1,8 @@
 # Copyright 2025 NVIDIA Corp. and affiliates. All rights reserved.
+# Modified by [Fangjing Wang/ SUST University] in [2025]. 
+# Modification: [return raw data and suport multi-dataset mixture].
+# Modified by [Jinhui YE/ HKUST University] in [2025]. 
+# Modification: [suport topdowm processing, suport param from config].
 
 from pathlib import Path
 from typing import Sequence

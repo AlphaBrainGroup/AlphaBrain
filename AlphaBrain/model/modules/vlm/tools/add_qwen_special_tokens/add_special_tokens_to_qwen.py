@@ -1,5 +1,7 @@
-# Copyright 2025 VLA-Engine. All rights reserved.
+# Copyright 2025 starVLA community. All rights reserved.
 # Licensed under the MIT License, Version 1.0 (the "License"); 
+# Implemented by [Jinhui YE / HKUST University] in [2025].
+
 
 
 import argparse

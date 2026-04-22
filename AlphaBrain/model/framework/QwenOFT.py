@@ -1,5 +1,7 @@
-# Copyright 2025 VLA-Engine. All rights reserved.
+# Copyright 2025 starVLA community. All rights reserved.
 # Licensed under the MIT License, Version 1.0 (the "License");
+# Implemented by [Jinhui YE / HKUST University] in [2025]. 
+
 
 """
 Qwen-OFT Framework
@@ -24,7 +26,7 @@ from typing import List, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
+import numpy as np  
 from PIL import Image
 
 

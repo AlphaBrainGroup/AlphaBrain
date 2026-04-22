@@ -1,4 +1,6 @@
 # Copyright 2025 NVIDIA Corp. and affiliates. All rights reserved.
+# Modified by [Junqiu YU/ Fudan University] in [2025]. 
+# Modification: [rm and add some connect adapter to match with starVLA, e.g., "rm "].
 
 
 

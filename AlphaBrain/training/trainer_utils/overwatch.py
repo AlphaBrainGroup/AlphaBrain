@@ -2,6 +2,7 @@
 overwatch.py
 # Original file from OpenVLA project (Prismatic), licensed under MIT License.
 # See https://github.com/openvla/openvla for full license text and contributors.
+# Modified by @JinhuiYE, [2025]
 Utility class for creating a centralized/standardized logger (built on Rich) and accelerate handler.
 """
 
