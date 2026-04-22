@@ -200,14 +200,36 @@ elif [ "${EVAL_BENCHMARK}" = "robocasa365" ]; then
         --args.video_out_path "${video_out_path}" \
         2>&1 | tee "${EVAL_LOG}"
 else
-    "${LIBERO_PYTHON}" ./benchmarks/LIBERO/eval/eval_libero.py \
-        --args.pretrained-path "${EVAL_CHECKPOINT}" \
-        --args.host "${EVAL_HOST}" \
-        --args.port "${EVAL_PORT}" \
-        --args.task-suite-name "${TASK_SUITE}" \
-        --args.num-trials-per-task "${NUM_TRIALS}" \
-        --args.video-out-path "${video_out_path}" \
-        2>&1 | tee "${EVAL_LOG}"
+    if [ "${TASK_SUITE}" = "libero_all" ]; then
+        # Run all 4 LIBERO suites sequentially, reusing the same server
+        for _suite in libero_goal libero_spatial libero_object libero_10; do
+            _suite_dir="${EVAL_OUT_DIR%/*}/${_suite}/${folder_name}"
+            mkdir -p "${_suite_dir}/videos"
+            _suite_log="${_suite_dir}/eval.log"
+            _suite_video="${_suite_dir}/videos"
+            echo ""
+            info "Running ${_suite} ..."
+            "${LIBERO_PYTHON}" ./benchmarks/LIBERO/eval/eval_libero.py \
+                --args.pretrained-path "${EVAL_CHECKPOINT}" \
+                --args.host "${EVAL_HOST}" \
+                --args.port "${EVAL_PORT}" \
+                --args.task-suite-name "${_suite}" \
+                --args.num-trials-per-task "${NUM_TRIALS}" \
+                --args.num-views "${EVAL_NUM_VIEWS:-2}" \
+                --args.video-out-path "${_suite_video}" \
+                2>&1 | tee "${_suite_log}"
+        done
+    else
+        "${LIBERO_PYTHON}" ./benchmarks/LIBERO/eval/eval_libero.py \
+            --args.pretrained-path "${EVAL_CHECKPOINT}" \
+            --args.host "${EVAL_HOST}" \
+            --args.port "${EVAL_PORT}" \
+            --args.task-suite-name "${TASK_SUITE}" \
+            --args.num-trials-per-task "${NUM_TRIALS}" \
+            --args.num-views "${EVAL_NUM_VIEWS:-2}" \
+            --args.video-out-path "${video_out_path}" \
+            2>&1 | tee "${EVAL_LOG}"
+    fi
 fi
 
 

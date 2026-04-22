@@ -51,6 +51,13 @@ class _PaliGemma_OFT_VL_Interface(nn.Module):
             logger.info(f"[meta_device_init] Created PaliGemma model via meta device, model_id={model_id}")
         else:
             attn_impl = paligemma_cfg.get("attn_implementation", "flash_attention_2")
+            # Auto-fallback: if flash_attention_2 requested but flash_attn not installed, use sdpa
+            if attn_impl == "flash_attention_2":
+                try:
+                    import flash_attn  # noqa: F401
+                except ImportError:
+                    attn_impl = "sdpa"
+                    logger.info("flash_attn not available, falling back to sdpa")
             model = PaliGemmaForConditionalGeneration.from_pretrained(
                 model_id,
                 torch_dtype="auto",

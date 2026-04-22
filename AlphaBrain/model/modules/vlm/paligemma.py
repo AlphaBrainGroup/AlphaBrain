@@ -74,6 +74,12 @@ class _PaliGemma_VL_Interface(nn.Module):
 
         # Build Gemma config
         attn_impl = getattr(paligemma_cfg, 'attn_implementation', 'flash_attention_2')
+        if attn_impl == 'flash_attention_2':
+            try:
+                import flash_attn  # noqa: F401
+            except ImportError:
+                attn_impl = 'sdpa'
+                logger.info("flash_attn not available, falling back to sdpa")
         gemma_config = CONFIG_MAPPING["gemma"](
             hidden_size=getattr(paligemma_cfg, 'width', 2048),
             intermediate_size=getattr(paligemma_cfg, 'mlp_dim', 16384),

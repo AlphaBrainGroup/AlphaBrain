@@ -82,6 +82,7 @@ class M1Inference:
         # These models return already-unnormalized actions despite the key name
         # "normalized_actions"; skip client-side unnormalization to avoid double-unnorm.
         self.skip_client_unnorm = False
+        self.invert_gripper_after_unnorm = False  # Pi0/Pi0.5 without internal norm needs gripper invert
         try:
             from AlphaBrain.model.framework.config_utils import read_mode_config
             _mc, _ = read_mode_config(Path(policy_ckpt_path))
@@ -90,6 +91,9 @@ class M1Inference:
             if _fw_name in ('PaliGemmaPi0', 'Pi0OFT', 'LlamaPi0') and _norm_cfg.get('enabled', False):
                 self.skip_client_unnorm = True
                 logging.info(f"[M1Inference] Detected {_fw_name} with internal MEAN_STD norm → skipping client unnorm")
+            elif _fw_name in ('PaliGemmaPi0', 'Pi0OFT', 'LlamaPi0') and not _norm_cfg.get('enabled', False):
+                self.invert_gripper_after_unnorm = True
+                logging.info(f"[M1Inference] Detected {_fw_name} without internal norm → will invert gripper after unnorm")
         except Exception as e:
             logging.warning(f"[M1Inference] Could not detect Pi0 norm mode: {e}")
 
@@ -180,6 +184,8 @@ class M1Inference:
                 self.cached_raw_actions = self.unnormalize_actions(
                     normalized_actions=normalized_actions, action_norm_stats=self.action_norm_stats
                 )
+                if self.invert_gripper_after_unnorm:
+                    self.cached_raw_actions[:, 6] = 1.0 - self.cached_raw_actions[:, 6]
             # Cache predicted frame if server sent one (WM backbones only)
             if "predicted_frame" in response.get("data", {}):
                 self._last_predicted_frame = response["data"]["predicted_frame"]

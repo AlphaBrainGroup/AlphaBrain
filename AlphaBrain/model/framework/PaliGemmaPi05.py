@@ -635,6 +635,9 @@ class PaliGemma_Pi05(BaseFramework):
             # Unnormalize actions if MEAN_STD normalization was used
             if self.use_action_norm:
                 actions = actions * self.action_std.to(actions.device) + self.action_mean.to(actions.device)
+                # Map gripper (dim 6) from [0,1] to [+1,-1] so that client-side
+                # -gripper + binarize(>0.5 → open) produces correct LIBERO commands
+                actions[:, :, 6] = 1.0 - 2.0 * actions[:, :, 6]
             
             actions_np = actions.cpu().float().numpy()
             return {"normalized_actions": actions_np.tolist()}
@@ -652,6 +655,9 @@ class PaliGemma_Pi05(BaseFramework):
             # Unnormalize actions if MEAN_STD normalization was used
             if self.use_action_norm:
                 actions = actions * self.action_std.to(actions.device) + self.action_mean.to(actions.device)
+                # Map gripper (dim 6) from [0,1] to [+1,-1] so that client-side
+                # -gripper + binarize(>0.5 → open) produces correct LIBERO commands
+                actions[:, :, 6] = 1.0 - 2.0 * actions[:, :, 6]
             
             actions_np = actions.cpu().float().numpy()
             return {"normalized_actions": actions_np.tolist()}
@@ -842,6 +848,9 @@ class PaliGemma_Pi05(BaseFramework):
         # Unnormalize actions if MEAN_STD normalization was used
         if self.use_action_norm:
             actions = actions * self.action_std.to(actions.device) + self.action_mean.to(actions.device)
+            # Map gripper (dim 6) from [0,1] to [+1,-1] so that client-side
+            # -gripper + binarize(>0.5 → open) produces correct LIBERO commands
+            actions[:, :, 6] = 1.0 - 2.0 * actions[:, :, 6]
         
         actions_np = actions.cpu().float().numpy()
         

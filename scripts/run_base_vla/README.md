@@ -40,6 +40,43 @@ Unified training & evaluation pipeline for the three base VLA frameworks in Alph
 
 ---
 
+## Environment Setup
+
+Before running any script, create a `.env` file in the project root:
+
+```bash
+# .env (project root)
+
+# Required: LIBERO dataset root directory
+LIBERO_DATA_ROOT=/path/to/IPEC-COMMUNITY
+
+# Required: LIBERO source code directory (for eval client)
+LIBERO_HOME=/path/to/LIBERO
+
+# Required for PaliGemmaPi05 models: PaliGemma tokenizer path
+# Must use the original Gemma tokenizer (vocab_size=256000)
+# Do NOT use the PaliGemma VLM checkpoint tokenizer (vocab_size=257152)
+PALIGEMMA_TOKENIZER_PATH=/path/to/paligemma_tokenizer
+```
+
+> **⚠️ Flash Attention**: If `flash_attn` is not installed (e.g., on NVIDIA B200/Blackwell GPUs), the code automatically falls back to SDPA. No manual config changes needed.
+
+---
+
+## Gripper Handling
+
+Different model types use different gripper conventions. The eval client (`model2libero_interface.py`) auto-detects the correct handling based on the checkpoint's `framework_config.yaml`:
+
+| Model Type | Detection | Gripper Processing |
+|:-----------|:----------|:-------------------|
+| **PaliGemmaOFT / LlamaOFT** | `framework.name` not Pi0-family | Standard q99 unnorm (no extra processing) |
+| **Pi0/Pi0.5 with MEAN_STD norm** (our pipeline finetuned) | `framework.name` ∈ Pi0-family, `normalization.enabled=true` | `skip_client_unnorm=True`, gripper inverted by client (`-gripper`). Framework's `predict_action` maps gripper via `1 - 2g` before returning. |
+| **Pi0/Pi0.5 without norm** (OpenPI official checkpoints) | `framework.name` ∈ Pi0-family, no normalization | `skip_client_unnorm=False`, q99 unnorm then `1.0 - gripper` (`invert_gripper_after_unnorm=True`) |
+
+This is fully automatic — no manual flags needed. Just point to the checkpoint and run eval.
+
+---
+
 ## Quick Start
 
 > **Environment**: Activate your project virtual environment before running any script.
