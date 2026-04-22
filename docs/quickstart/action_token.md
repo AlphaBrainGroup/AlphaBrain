@@ -1,4 +1,4 @@
-# RL-Token
+# ActionToken
 
 Two-phase TD3 online RL fine-tuning on a pretrained QwenOFT VLA — encoder pretrain + off-policy rollouts.
 

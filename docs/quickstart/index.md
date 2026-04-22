@@ -14,7 +14,7 @@ From a blank machine to a trained-and-evaluated VLA checkpoint — then into any
 | 0 | [**Installation**](installation.md) | Conda envs, Flash Attention, pretrained weights, LIBERO data, `.env` config. | — |
 | 1 | [**Baseline VLA**](baselineVLA.md) | PaliGemmaOFT / Pi05 / LlamaOFT finetune + LIBERO eval — the first trained checkpoint from the default recipe. | 4× A800 |
 | 2 | [**NeuroVLA**](neurovla.md) | Pretrain a brain-inspired VLA, then R-STDP fine-tune the SNN action head. | 4× A800 |
-| 3 | [**RL-Token**](rl_token.md) | Off-policy TD3 RL on a pretrained QwenOFT (encoder pretrain + rollout + TD updates). | 6× A800 |
+| 3 | [**ActionToken**](action_token.md) | Off-policy TD3 RL on a pretrained QwenOFT (encoder pretrain + rollout + TD updates). | 6× A800 |
 | 4 | [**World Model**](world_model.md) | V-JEPA / Cosmos / Wan backbones × GR00T / OFT / PI decoders (12 combinations) + CosmosPolicy. | 4× A800 |
 | 5 | [**Continual Learning**](continual_learning.md) | Sequential finetuning across 10 LIBERO tasks with Experience Replay (LoRA + full-param). | 2× A800 |
 
@@ -49,7 +49,7 @@ AlphaBrain/
 │   ├── run_eval.sh                   # eval launcher
 │   ├── run_base_vla/                 # Baseline VLA wrappers
 │   ├── run_brain_inspired_scripts/   # NeuroVLA wrappers
-│   ├── run_rl_scripts/               # RL-Token wrappers
+│   ├── run_rl_scripts/               # ActionToken wrappers
 │   ├── run_continual_learning_scripts/
 │   └── run_world_model/              # World Model wrappers
 └── results/
@@ -81,7 +81,7 @@ Run these once before any capability page:
 - **"I just installed — does training work?"** → [Baseline VLA](baselineVLA.md)
 - **"How do I finetune a different backbone?"** → [Baseline VLA](baselineVLA.md) § Switch Backbone
 - **"Is there a bio-plausible fine-tuning path?"** → [NeuroVLA](neurovla.md)
-- **"Can I improve a pretrained VLA with RL?"** → [RL-Token](rl_token.md)
+- **"Can I improve a pretrained VLA with RL?"** → [ActionToken](action_token.md)
 - **"I want the SOTA visual backbone."** → [World Model](world_model.md) (Cosmos 2.0 + GR00T currently leads)
 - **"How do I handle task drift across 10 tasks?"** → [Continual Learning](continual_learning.md)
 

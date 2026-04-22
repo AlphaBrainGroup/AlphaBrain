@@ -18,7 +18,7 @@
 
 -   :material-flash: **[Quickstart](quickstart/index.md)**
 
-    Start with Baseline VLA for the default finetune + eval, then pick a capability: NeuroVLA, RL-Token, World Model, or Continual Learning.
+    Start with Baseline VLA for the default finetune + eval, then pick a capability: NeuroVLA, ActionToken, World Model, or Continual Learning.
 
 -   :material-api: **[API Reference](api/index.md)**
 
@@ -34,7 +34,7 @@
 |:-----------|:--------|:-----------|
 | **Baseline VLA** | PaliGemmaOFT / PaliGemmaPi05 / LlamaOFT finetune + LIBERO eval. | [Baseline VLA](quickstart/baselineVLA.md) |
 | **NeuroVLA** | Brain-inspired VLA with Spiking Neural Network action head and R-STDP learning. | [NeuroVLA](quickstart/neurovla.md) |
-| **RL-Token** | Off-policy TD3 online RL fine-tuning with an information-bottleneck encoder. | [RL-Token](quickstart/rl_token.md) |
+| **ActionToken** | Off-policy TD3 online RL fine-tuning with an information-bottleneck encoder. | [ActionToken](quickstart/action_token.md) |
 | **World Model** | V-JEPA / Cosmos / Wan backbones with pluggable GR00T / OFT / PI decoders. | [World Model](quickstart/world_model.md) |
 | **Continual Learning** | Experience-replay fine-tuning across 10 LIBERO tasks (LoRA or full-param). | [Continual Learning](quickstart/continual_learning.md) |
 

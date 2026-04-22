@@ -108,7 +108,7 @@ nav:
     - Installation: quickstart/installation.md
     - Baseline VLA: quickstart/baselineVLA.md
     - NeuroVLA: quickstart/neurovla.md
-    - RL-Token: quickstart/rl_token.md
+    - ActionToken: quickstart/action_token.md
     - World Model: quickstart/world_model.md
     - Continual Learning: quickstart/continual_learning.md
   - API Reference:

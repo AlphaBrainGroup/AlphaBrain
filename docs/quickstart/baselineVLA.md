@@ -56,7 +56,7 @@ Results: per-task + overall success rate.
 ## Next Steps
 
 - [NeuroVLA](neurovla.md) — brain-inspired SNN action head
-- [RL-Token](rl_token.md) — online RL fine-tuning
+- [ActionToken](action_token.md) — online RL fine-tuning
 - [World Model](world_model.md) — V-JEPA / Cosmos / Wan backbones
 - [Continual Learning](continual_learning.md) — sequential finetuning across 10 tasks
 
