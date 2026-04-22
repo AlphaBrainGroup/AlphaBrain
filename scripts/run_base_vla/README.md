@@ -40,6 +40,32 @@ Unified training & evaluation pipeline for the three base VLA frameworks in Alph
 
 ---
 
+## Environment Setup
+
+Before running any script, create a `.env` file in the project root with the following variables:
+
+```bash
+# .env (project root)
+
+# Required: LIBERO dataset root directory
+LIBERO_DATA_ROOT=/path/to/IPEC-COMMUNITY
+
+# Required: LIBERO source code directory (for eval client)
+LIBERO_HOME=/path/to/LIBERO
+
+# Required for PaliGemmaPi05 models: PaliGemma tokenizer path
+# Use the original Gemma tokenizer (vocab_size=256000), NOT the PaliGemma checkpoint tokenizer (257152)
+PALIGEMMA_TOKENIZER_PATH=/path/to/paligemma_tokenizer
+```
+
+> **⚠️ Tokenizer Warning**: PaliGemmaPi05 (Pi0/Pi0.5) models require the original Gemma tokenizer (`vocab_size=256000`). Using the PaliGemma checkpoint's tokenizer (`vocab_size=257152`) will cause degraded eval performance. Set `PALIGEMMA_TOKENIZER_PATH` to point to the correct tokenizer directory.
+
+> **⚠️ Flash Attention**: If `flash_attn` is not installed (e.g., on NVIDIA B200/Blackwell GPUs), the code will automatically fall back to SDPA. No manual config changes needed.
+
+> **⚠️ LIBERO in conda env**: The eval client requires the `libero` package. Make sure it is installed in your active conda environment (`pip install -e /path/to/LIBERO`).
+
+---
+
 ## Quick Start
 
 > **Environment**: Activate your project virtual environment before running any script.

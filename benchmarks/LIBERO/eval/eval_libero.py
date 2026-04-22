@@ -229,9 +229,11 @@ def eval_libero(args: Args) -> None:
                 }
 
                 # align key with model API
+                # Auto-detect num_views from model (Pi0=2, OFT=1), fallback to args
+                _num_views = getattr(model, 'num_views', args.num_views)
                 obs_input = {
                 "images": [observation["observation.primary"][0]] + (
-                    [observation["observation.wrist_image"][0]] if args.num_views >= 2 else []
+                    [observation["observation.wrist_image"][0]] if _num_views >= 2 else []
                 ),
                 "states": observation["observation.states"].astype(np.float32),  # shape (n, 8)
                 "task_description": observation["instruction"][0],

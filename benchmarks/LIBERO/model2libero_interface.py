@@ -82,6 +82,7 @@ class M1Inference:
         # These models return already-unnormalized actions despite the key name
         # "normalized_actions"; skip client-side unnormalization to avoid double-unnorm.
         self.skip_client_unnorm = False
+        self.num_views = 1  # default: OFT models use single view
         try:
             from AlphaBrain.model.framework.config_utils import read_mode_config
             _mc, _ = read_mode_config(Path(policy_ckpt_path))
@@ -90,6 +91,16 @@ class M1Inference:
             if _fw_name in ('PaliGemmaPi0', 'Pi0OFT', 'LlamaPi0') and _norm_cfg.get('enabled', False):
                 self.skip_client_unnorm = True
                 logging.info(f"[M1Inference] Detected {_fw_name} with internal MEAN_STD norm → skipping client unnorm")
+            # Auto-detect num_views: Pi0/Pi0.5 models use 2 views (primary + wrist),
+            # OFT models use 1 view (primary only)
+            _paligemma_cfg = _mc.get('framework', {}).get('paligemma', {})
+            _image_mask = _paligemma_cfg.get('image_mask', None)
+            if _image_mask is not None:
+                self.num_views = sum(1 for m in _image_mask if m)
+                logging.info(f"[M1Inference] Auto-detected num_views={self.num_views} from image_mask={_image_mask}")
+            elif _fw_name in ('PaliGemmaPi0', 'Pi0OFT', 'LlamaPi0'):
+                self.num_views = 2  # Pi0/Pi0.5 default: primary + wrist
+                logging.info(f"[M1Inference] {_fw_name} detected, defaulting to num_views=2")
         except Exception as e:
             logging.warning(f"[M1Inference] Could not detect Pi0 norm mode: {e}")
 
@@ -171,15 +182,16 @@ class M1Inference:
             except Exception:
                 pass
             if self.skip_client_unnorm:
-                # Pi0 models already unnormalized actions internally (MEAN_STD);
-                # use raw output directly without clip/unnorm.
-                # Invert gripper (dim 6): Pi0 convention may be opposite to LIBERO
-                normalized_actions[:, 6] = -normalized_actions[:, 6]
+                # Our pipeline finetuned Pi0 models: already unnormalized internally (MEAN_STD);
+                # use raw output directly without clip/unnorm or gripper invert.
                 self.cached_raw_actions = normalized_actions
             else:
                 self.cached_raw_actions = self.unnormalize_actions(
                     normalized_actions=normalized_actions, action_norm_stats=self.action_norm_stats
                 )
+                # OpenPI official checkpoints use inverted gripper convention;
+                # invert gripper (dim 6) after unnorm for LIBERO compatibility
+                self.cached_raw_actions[:, 6] = 1.0 - self.cached_raw_actions[:, 6]
             # Cache predicted frame if server sent one (WM backbones only)
             if "predicted_frame" in response.get("data", {}):
                 self._last_predicted_frame = response["data"]["predicted_frame"]
