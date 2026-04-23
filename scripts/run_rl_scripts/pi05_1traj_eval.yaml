@@ -1,0 +1,17 @@
+# Eval config for the pi05_1traj finetune run.
+# Launch:
+#   bash scripts/run_base_vla/eval.sh pi05_1traj_goal_eval scripts/run_rl_scripts/pi05_1traj_eval.yaml
+#
+# Swap `checkpoint` to an intermediate step (e.g. checkpoints/steps_10000)
+# to eval mid-training.
+
+modes:
+  pi05_1traj_goal_eval:
+    type: "eval"
+    checkpoint: "./results/training/Pi05-1traj-libero_goal/final_model"
+    task_suite: "libero_goal"
+    num_trials: 10
+    host: "127.0.0.1"
+    port: 5795
+    gpu_id: 0
+    use_bf16: true

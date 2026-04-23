@@ -206,6 +206,7 @@ else
         --args.port "${EVAL_PORT}" \
         --args.task-suite-name "${TASK_SUITE}" \
         --args.num-trials-per-task "${NUM_TRIALS}" \
+        --args.max-steps "${EVAL_LIBERO_MAX_STEPS}" \
         --args.video-out-path "${video_out_path}" \
         2>&1 | tee "${EVAL_LOG}"
 fi

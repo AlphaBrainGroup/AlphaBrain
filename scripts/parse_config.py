@@ -92,6 +92,7 @@ def parse_config(config_path: str, mode: str):
         print(f"EVAL_NUM_EPISODES={mode_config.get('n_episodes', mode_config.get('num_trials', 50))}")
         print(f"EVAL_NUM_ENVS={mode_config.get('n_envs', 1)}")
         print(f"EVAL_MAX_EPISODE_STEPS={mode_config.get('max_episode_steps', 720)}")
+        print(f"EVAL_LIBERO_MAX_STEPS={mode_config.get('max_steps', 0)}")  # 0 = use eval_libero.py suite default
         print(f"EVAL_N_ACTION_STEPS={mode_config.get('n_action_steps', 12)}")
         print(f"EVAL_NUMBA_DISABLE_JIT='{expand_env_vars(str(mode_config.get('numba_disable_jit', 1)))}'")
         print(f"EVAL_MUJOCO_GL='{expand_env_vars(mode_config.get('mujoco_gl', 'egl'))}'")

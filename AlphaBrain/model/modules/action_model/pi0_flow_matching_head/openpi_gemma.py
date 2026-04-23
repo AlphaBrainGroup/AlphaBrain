@@ -1,6 +1,10 @@
 """OpenPI's PaliGemmaWithExpertModel - ported to AlphaBrain.
 Original: openpi/src/openpi/models_pytorch/gemma_pytorch.py
 """
+# Defer annotation evaluation — class body at line ~105 references
+# `pytest.Cache` (typo, probably meant `transformers.Cache`) which explodes
+# at class-definition time when pytest isn't installed in the runtime env.
+from __future__ import annotations
 from typing import Literal
 
 try:

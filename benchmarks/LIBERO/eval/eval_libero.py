@@ -100,6 +100,8 @@ class Args:
 
     norm_mode: str = "q99"  # "q99" → q01/q99 percentile (VLA default); "min_max" → absolute min/max (ACT)
 
+    max_steps: int = 0  # Override per-suite default when >0; else falls back to hardcoded defaults below
+
 
 
 def eval_libero(args: Args) -> None:
@@ -130,6 +132,10 @@ def eval_libero(args: Args) -> None:
         max_steps = 400  # longest training demo has 373 steps
     else:
         raise ValueError(f"Unknown task suite: {args.task_suite_name}")
+
+    if args.max_steps > 0:
+        logging.info(f"Overriding max_steps {max_steps} → {args.max_steps} (from --args.max-steps)")
+        max_steps = args.max_steps
 
     # client = websocket_policy_client.WebsocketClientPolicy(args.host, args.port)
 

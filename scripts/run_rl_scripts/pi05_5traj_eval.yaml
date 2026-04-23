@@ -1,0 +1,18 @@
+# Eval config for the 2026-04-20 pi05_5traj finetune run.
+# Launch:
+#   bash scripts/run_base_vla/eval.sh pi05_5traj_goal_eval scripts/run_rl_scripts/pi05_5traj_eval.yaml
+#
+# Swap `checkpoint` to a different step (steps_10000 ~ steps_40000) to sweep.
+# No final_model exists for this run; steps_50000 is the last saved ckpt.
+
+modes:
+  pi05_5traj_goal_eval:
+    type: "eval"
+    checkpoint: "./results/training/Pi05-5traj-libero_goal/checkpoints/steps_50000"
+    task_suite: "libero_goal"
+    num_trials: 3
+    host: "127.0.0.1"
+    port: 5796
+    gpu_id: 5
+    use_bf16: true
+    max_steps: 600  # override libero_goal hardcoded 300 for longer rollouts

@@ -1,0 +1,23 @@
+# Cross-check eval: jeff's known-good pre-RL pi05 libero_goal ckpt.
+# jeff recorded 74% success on this ckpt → if our pipeline reproduces ~70-80%,
+# the eval is correct and our Pi05-5traj ckpt is the one that's broken.
+#
+# Source: /share/jeff/VLA-Engine-Developer/results/training/paligemma_pi0_openpi_goal/
+#   framework: PaliGemmaPi0 (pi05: true, aliased to PaliGemma_Pi05)
+#   data: libero_goal, 30k steps, openpi-aligned
+#
+# Launch:
+#   bash scripts/run_base_vla/eval.sh pi05_jeff_openpi_goal_eval \
+#        scripts/run_rl_scripts/pi05_jeff_openpi_goal_eval.yaml
+
+modes:
+  pi05_jeff_openpi_goal_eval:
+    type: "eval"
+    checkpoint: "/share/jeff/VLA-Engine-Developer/results/training/paligemma_pi0_openpi_goal/checkpoints/steps_30000"
+    task_suite: "libero_goal"
+    num_trials: 3
+    host: "127.0.0.1"
+    port: 5797
+    gpu_id: 5
+    use_bf16: true
+    max_steps: 600

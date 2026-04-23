@@ -4,7 +4,12 @@ import argparse
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--phase", type=str, required=True, choices=["pretrain", "rl", "rl_offpolicy"])
+    p.add_argument(
+        "--phase",
+        type=str,
+        required=True,
+        choices=["pretrain", "pretrain_rlt_ori", "rl", "rl_offpolicy"],
+    )
     p.add_argument("--ckpt_path", type=str, required=True, help="SFT checkpoint path")
     p.add_argument("--encoder_path", type=str, default=None,
                    help="Pretrained encoder checkpoint (required for --phase rl)")
@@ -38,12 +43,47 @@ def parse_args():
                    help="Number of observations to collect for encoder pretraining")
     p.add_argument("--pretrain_steps_per_reset", type=int, default=20,
                    help="Random steps per env reset for observation diversity")
-    p.add_argument("--pretrain_epochs", type=int, default=50)
+    p.add_argument("--pretrain_epochs", type=int, default=50,
+                   help="Upper bound on dataset passes. See also --pretrain_max_steps.")
+    p.add_argument("--pretrain_max_steps", type=int, default=0,
+                   help="Early-stop the pretrain at N gradient steps (one optimizer.step = "
+                        "one step). 0 disables the cap and lets pretrain_epochs run to completion. "
+                        "When both are set, whichever hits first wins.")
     p.add_argument("--pretrain_lr", type=float, default=1e-4)
     p.add_argument("--pretrain_batch_size", type=int, default=32,
                    help="Batch size for encoder-decoder pretraining (tensor-level, no VLA forward)")
     p.add_argument("--vla_extract_batch_size", type=int, default=16,
                    help="Batch size for VLA action_queries extraction (one-time, memory-bound)")
+
+    # RLT_ori Phase 1 (paper-faithful pretraining)
+    p.add_argument("--demo_config", type=str, default=None,
+                   help="Path to a YAML with datasets.vla_data (LeRobot demo mixture) for "
+                        "the RLT_ori pretrain phase. Required when alpha_vla > 0; "
+                        "otherwise the trainer falls back to random-rollout observations.")
+    p.add_argument("--alpha_vla", type=float, default=0.0,
+                   help="Weight on L_vla for joint VLA fine-tune during RLT_ori pretrain "
+                        "(reference Alg. 1: ϕ, θ_vla = argmin L_ro + α L_vla). "
+                        "0 keeps the VLA frozen. Requires --demo_config.")
+    p.add_argument("--decoder_layers", type=int, default=2,
+                   help="RLT_ori decoder transformer layers")
+    p.add_argument("--max_len", type=int, default=4096,
+                   help="Max VLA token sequence length the RLT_ori decoder supports "
+                        "(controls target-stream positional embedding size)")
+    p.add_argument("--image_only", action="store_true", default=True,
+                   help="Strict-reference mode: keep ONLY image-token positions "
+                        "(matches Fig. 2 / footnote 1). Default True.")
+    p.add_argument("--all_tokens", dest="image_only", action="store_false",
+                   help="Relaxed mode: keep image + language (and optionally action) "
+                        "tokens; mirrors Sec. IV-A's general claim. Subject to "
+                        "--drop_action_tokens.")
+    p.add_argument("--drop_action_tokens", action="store_true", default=True,
+                   help="Only relevant when --all_tokens: drop action-placeholder "
+                        "token positions from the encoder input (they are prediction "
+                        "targets, not inputs).")
+    p.add_argument("--keep_action_tokens", dest="drop_action_tokens",
+                   action="store_false",
+                   help="Only relevant when --all_tokens: keep action-placeholder "
+                        "positions in the encoder input.")
 
     # RL training (Phase 2)
     # Naming: *_per_task is the canonical name (clearer for multi-task);
