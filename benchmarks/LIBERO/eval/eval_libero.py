@@ -96,7 +96,7 @@ class Args:
 
     job_name: str = "test"
 
-    num_views: int = 1  # Number of camera views to send (1=primary only, 2=primary+wrist)
+    num_views: int = 2  # Number of camera views to send (1=primary only, 2=primary+wrist)
 
     norm_mode: str = "q99"  # "q99" → q01/q99 percentile (VLA default); "min_max" → absolute min/max (ACT)
 
