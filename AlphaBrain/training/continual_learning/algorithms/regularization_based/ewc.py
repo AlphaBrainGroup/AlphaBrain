@@ -55,6 +55,7 @@ standard practice in online-EWC implementations.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import torch
@@ -90,6 +91,17 @@ def _zero_grad(model: Any) -> None:
         model.zero_grad(set_to_none=True)
 
 
+def _is_main_rank() -> bool:
+    """Return True iff this process is rank 0 (or non-distributed)."""
+    try:
+        import torch.distributed as dist
+        if dist.is_available() and dist.is_initialized():
+            return dist.get_rank() == 0
+    except Exception:
+        pass
+    return True
+
+
 class EWC(CLAlgorithm):
     """Elastic Weight Consolidation with diagonal Fisher approximation.
 
@@ -118,6 +130,7 @@ class EWC(CLAlgorithm):
         fisher_num_batches: int = 50,
         fisher_clip: Optional[float] = 1e4,
         grad_clip_per_sample: Optional[float] = 100.0,
+        fisher_save_dir: Optional[str] = None,
     ):
         self.ewc_lambda = float(ewc_lambda)
         self.gamma = float(gamma)
@@ -126,6 +139,12 @@ class EWC(CLAlgorithm):
         self.fisher_clip = None if fisher_clip is None else float(fisher_clip)
         self.grad_clip_per_sample = (
             None if grad_clip_per_sample is None else float(grad_clip_per_sample)
+        )
+        # When set, after every task we dump the accumulated Fisher + θ*
+        # tensors to `<fisher_save_dir>/fisher_task_<k>.pt` for offline
+        # analysis.  Rank 0 writes; other ranks are silent.
+        self.fisher_save_dir = (
+            None if fisher_save_dir is None else str(fisher_save_dir)
         )
 
         # CPU-resident master state (fp32, keyed by full parameter name)
@@ -139,6 +158,9 @@ class EWC(CLAlgorithm):
 
         # Bookkeeping
         self._completed_tasks: List[int] = []
+        # Most recent raw (unmerged) per-task Fisher — for `metrics()`
+        # and to help diagnose whether this task's estimate was sane.
+        self._last_task_fisher_stats: Dict[str, float] = {}
 
     # ------------------------------------------------------------------
     # Parameter iteration (respects lora_only filter)
@@ -174,6 +196,18 @@ class EWC(CLAlgorithm):
         The dataloader is iterated for up to ``fisher_num_batches`` batches;
         each batch forwards once, backprops once, and contributes its squared
         gradients (clipped if configured) to the running Fisher accumulator.
+
+        DeepSpeed ZeRO-2 notes
+        ----------------------
+        Under DeepSpeed ZeRO-2 with ``contiguous_gradients: true``, ``param.grad``
+        is cleared once autograd finishes (gradients live in DeepSpeed's
+        contiguous bucket).  Reading ``param.grad`` directly after
+        ``accelerator.backward`` therefore yields ``None`` and silently gives
+        an all-zero Fisher.  To avoid this we register a per-parameter
+        backward hook that fires *during* autograd — hooks run before
+        DeepSpeed moves the gradient away, so we capture the live
+        (pre-reduction, per-rank-local) gradient there.  For MIR-style
+        heuristic use the per-rank local value is fine.
         """
         fisher: Dict[str, torch.Tensor] = {}
         for name, param in self._iter_params(model):
@@ -193,11 +227,26 @@ class EWC(CLAlgorithm):
         was_training = base.training
         model.eval()
 
+        # Install autograd hooks on every tracked LoRA param so we capture
+        # gradients during backward (before DeepSpeed can clear `.grad`).
+        captured: Dict[str, torch.Tensor] = {}
+        hook_handles: List[Any] = []
+        for name, param in self._iter_params(model):
+            def _make_hook(pname: str):
+                def _hook(grad: torch.Tensor) -> torch.Tensor:
+                    # Clone so later autograd ops don't mutate our copy;
+                    # cast to fp32 for numerically stable accumulation.
+                    captured[pname] = grad.detach().to(torch.float32).clone()
+                    return grad  # don't modify the gradient
+                return _hook
+            hook_handles.append(param.register_hook(_make_hook(name)))
+
         count = 0
         try:
             for batch in dataloader:
                 if count >= self.fisher_num_batches:
                     break
+                captured.clear()
                 _zero_grad(model)
 
                 with torch.autocast("cuda", dtype=torch.bfloat16):
@@ -209,15 +258,21 @@ class EWC(CLAlgorithm):
                 else:
                     loss.backward()
 
-                for name, param in self._iter_params(model):
-                    if param.grad is None:
-                        continue
-                    g = param.grad.detach()
+                # After backward, `captured` holds per-param gradients
+                # regardless of whether DeepSpeed cleared .grad.
+                for name, g in captured.items():
                     if self.grad_clip_per_sample is not None:
-                        g = g.clamp(-self.grad_clip_per_sample, self.grad_clip_per_sample)
-                    fisher[name] += g.pow(2).to(dtype=torch.float32, device="cpu")
+                        g = g.clamp(
+                            -self.grad_clip_per_sample, self.grad_clip_per_sample
+                        )
+                    fisher[name] += g.pow(2).cpu()
                 count += 1
         finally:
+            for h in hook_handles:
+                try:
+                    h.remove()
+                except Exception:
+                    pass
             _zero_grad(model)
             if was_training:
                 base.train()
@@ -229,12 +284,29 @@ class EWC(CLAlgorithm):
             for name in fisher:
                 fisher[name] = fisher[name].clamp_(0.0, self.fisher_clip)
 
-        logger.info(
+        # Cheap diagnostic summary — use WARNING level so it bypasses
+        # accelerate's default INFO filter and actually shows up in logs.
+        sum_all = float(sum(float(t.sum()) for t in fisher.values()))
+        max_all = float(max(float(t.max()) for t in fisher.values()))
+        nonzero_entries = int(
+            sum(int((t > 0).sum()) for t in fisher.values())
+        )
+        total_entries = int(sum(t.numel() for t in fisher.values()))
+        pct_nonzero = (
+            100.0 * nonzero_entries / total_entries if total_entries else 0.0
+        )
+        self._last_task_fisher_stats = {
+            "fisher_sum": sum_all,
+            "fisher_max": max_all,
+            "fisher_pct_nonzero": pct_nonzero,
+            "fisher_num_params": float(len(fisher)),
+            "fisher_num_batches_used": float(count),
+        }
+        logger.warning(
             "EWC: Fisher estimated over %d batches across %d params "
-            "(lora_only=%s).",
-            count,
-            len(fisher),
-            self.lora_only,
+            "(lora_only=%s).  sum=%.4e  max=%.4e  nonzero=%.2f%%",
+            count, len(fisher), self.lora_only,
+            sum_all, max_all, pct_nonzero,
         )
         return fisher
 
@@ -281,13 +353,49 @@ class EWC(CLAlgorithm):
         self._fisher_gpu = None
         self._old_params_gpu = None
 
-        logger.info(
+        # Use WARNING level so the message survives accelerate's INFO filter.
+        logger.warning(
             "EWC.on_task_end: consolidated task %s "
             "(total tasks seen = %d, Fisher entries = %d)",
             context.task_id,
             len(self._completed_tasks),
             len(self._fisher or {}),
         )
+
+        # Optionally persist the Fisher + θ* snapshot to disk for offline
+        # analysis.  Only rank 0 writes (tensors are per-rank local but we
+        # pick one deterministic view).
+        if self.fisher_save_dir is not None and _is_main_rank():
+            try:
+                os.makedirs(self.fisher_save_dir, exist_ok=True)
+                save_path = os.path.join(
+                    self.fisher_save_dir,
+                    f"fisher_task_{int(context.task_id)}.pt",
+                )
+                torch.save(
+                    {
+                        "task_id": int(context.task_id),
+                        "completed_tasks": list(self._completed_tasks),
+                        "fisher": self._fisher,
+                        "old_params": self._old_params,
+                        "last_task_fisher_stats": dict(self._last_task_fisher_stats),
+                        "config": {
+                            "ewc_lambda": self.ewc_lambda,
+                            "gamma": self.gamma,
+                            "lora_only": self.lora_only,
+                            "fisher_num_batches": self.fisher_num_batches,
+                            "fisher_clip": self.fisher_clip,
+                            "grad_clip_per_sample": self.grad_clip_per_sample,
+                        },
+                    },
+                    save_path,
+                )
+                logger.warning("EWC: saved Fisher snapshot -> %s", save_path)
+            except Exception as e:
+                logger.warning(
+                    "EWC: failed to save Fisher snapshot for task %s: %s",
+                    context.task_id, e,
+                )
 
     def compute_penalty(self, model: Any) -> Optional[torch.Tensor]:
         """Return λ · Σ F · (θ − θ*)² or None if no tasks have been seen."""
@@ -343,9 +451,14 @@ class EWC(CLAlgorithm):
         }
 
     def metrics(self) -> Dict[str, float]:
-        return {
+        m: Dict[str, float] = {
             "ewc_num_tasks_consolidated": float(len(self._completed_tasks)),
         }
+        # Surface last task's Fisher stats so training logs show whether
+        # Fisher estimation actually captured signal (vs silently zeroing).
+        for k, v in self._last_task_fisher_stats.items():
+            m[f"ewc_{k}"] = float(v)
+        return m
 
     def state_dict(self) -> Dict[str, Any]:
         """Return only metadata — Fisher/θ* tensors are not serialized.

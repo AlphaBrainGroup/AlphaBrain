@@ -107,6 +107,7 @@ def build_cl_algorithm(cfg, seed: int = 42) -> Optional[CLAlgorithm]:
                 fisher_num_batches=algo_cfg.get("fisher_num_batches", 50),
                 fisher_clip=algo_cfg.get("fisher_clip", 1.0e4),
                 grad_clip_per_sample=algo_cfg.get("grad_clip_per_sample", 100.0),
+                fisher_save_dir=algo_cfg.get("fisher_save_dir", None),
             )
         if key == "mir":
             return MIR(

@@ -83,6 +83,8 @@ continual_learning:
     fisher_num_batches: 20        # minibatches used to estimate Fisher
     fisher_clip: 1.0e4            # clamp to guard against outlier spikes
     grad_clip_per_sample: 100.0   # per-batch grad clip before squaring
+    # Smoke-only: dump Fisher snapshots so we can verify non-zero values.
+    fisher_save_dir: ${run_root_dir}/${run_id}/fisher_snapshots
 
 
 # ============================================================================

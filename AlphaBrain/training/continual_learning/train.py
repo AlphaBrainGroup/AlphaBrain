@@ -393,10 +393,13 @@ class ContinualVLATrainer(TrainerUtils):
                 action_loss = output_dict["action_loss"]
                 total_loss = action_loss
 
+                penalty_value: float = 0.0
                 if self.cl_algorithm is not None:
                     penalty = self.cl_algorithm.compute_penalty(self.model)
                     if penalty is not None:
                         total_loss = total_loss + penalty
+                        # Detach for logging — no grad needed on the scalar copy.
+                        penalty_value = float(penalty.detach().item())
 
             self.accelerator.backward(total_loss)
 
@@ -416,7 +419,15 @@ class ContinualVLATrainer(TrainerUtils):
             self.optimizer.step()
             lr_scheduler.step()
 
-        return {"action_dit_loss": action_loss.item()}
+        # Split loss components so dashboards / grep can see each part
+        # of the sum that drove this step's optimizer update.  For
+        # algorithms that don't return a penalty (ER / MIR) the `cl_penalty`
+        # column stays at 0.0 and `total_loss` == `action_dit_loss`.
+        return {
+            "action_dit_loss": action_loss.item(),
+            "cl_penalty_loss": penalty_value,
+            "total_loss": action_loss.item() + penalty_value,
+        }
 
     # ------------------------------------------------------------------
     # Checkpointing
