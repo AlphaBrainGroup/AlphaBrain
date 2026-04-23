@@ -160,6 +160,26 @@ DATASET_NAMED_MIXTURES = {
         ("target/composite/KettleBoiling/*/lerobot", 1.0, "panda_omron"),
     ],
 
+    # -------------------------------------------------------------------------
+    # CL lifelong presets (drawn from Robocasa's `pretrain/` split per their spec:
+    #   https://robocasa.ai/docs/build/html/benchmarking/lifelong_learning.html )
+    # Order matters: the MixtureDataset preserves the list order, and our CL
+    # trainer treats each sub-dataset's ordinal as the CL task_id when the
+    # task sequence sets task_stream_mode=by_dataset.
+    # -------------------------------------------------------------------------
+    "robocasa365_cl_atomic10": [
+        ("pretrain/atomic/NavigateKitchen/*/lerobot",            1.0, "panda_omron"),
+        ("pretrain/atomic/OpenDrawer/*/lerobot",                 1.0, "panda_omron"),
+        ("pretrain/atomic/OpenCabinet/*/lerobot",                1.0, "panda_omron"),
+        ("pretrain/atomic/CloseFridge/*/lerobot",                1.0, "panda_omron"),
+        ("pretrain/atomic/CloseBlenderLid/*/lerobot",            1.0, "panda_omron"),
+        ("pretrain/atomic/CoffeeSetupMug/*/lerobot",             1.0, "panda_omron"),
+        ("pretrain/atomic/PickPlaceCounterToCabinet/*/lerobot",  1.0, "panda_omron"),
+        ("pretrain/atomic/PickPlaceSinkToCounter/*/lerobot",     1.0, "panda_omron"),
+        ("pretrain/atomic/TurnOnMicrowave/*/lerobot",            1.0, "panda_omron"),
+        ("pretrain/atomic/TurnOffStove/*/lerobot",               1.0, "panda_omron"),
+    ],
+
     "BEHAVIOR_challenge": [
         ("BEHAVIOR_challenge", 1.0, "R1Pro"),
     ],

@@ -60,6 +60,7 @@ from AlphaBrain.training.continual_learning.algorithms import (
 )
 from AlphaBrain.training.continual_learning.datasets.task_sequences import (
     CL_TASK_SEQUENCES,
+    build_dataset_task_map,
     build_episode_task_map,
     get_task_sequence,
     TaskFilteredDataset,
@@ -91,12 +92,15 @@ def build_full_dataset(cfg):
     return get_vla_dataset(data_cfg=vla_dataset_cfg)
 
 
-def build_task_dataloader(full_dataset, task_index, episode_task_map, cfg):
+def build_task_dataloader(
+    full_dataset, task_index, episode_task_map, cfg, *, task_stream_mode="by_task_index"
+):
     """Build a DataLoader for a specific task by filtering the full dataset."""
     filtered_dataset = TaskFilteredDataset(
         base_dataset=full_dataset,
         task_indices=[task_index],
         episode_task_map=episode_task_map,
+        task_stream_mode=task_stream_mode,
     )
     dataloader = DataLoader(
         filtered_dataset,
@@ -182,6 +186,7 @@ class ContinualVLATrainer(TrainerUtils):
         seq_cfg = get_task_sequence(self.cl_cfg.task_sequence)
         num_tasks = seq_cfg["num_tasks"]
         task_order = seq_cfg.get("task_order", list(range(num_tasks)))
+        task_stream_mode = seq_cfg.get("task_stream_mode", "by_task_index")
         steps_per_task = self.cl_cfg.steps_per_task
         save_per_task = self.cl_cfg.get("save_checkpoint_per_task", True)
 
@@ -199,7 +204,8 @@ class ContinualVLATrainer(TrainerUtils):
                 for skip_idx in range(start_task_idx):
                     skip_task_id = task_order[skip_idx]
                     _, skip_dataset = build_task_dataloader(
-                        full_dataset, skip_task_id, episode_task_map, self.config
+                        full_dataset, skip_task_id, episode_task_map, self.config,
+                        task_stream_mode=task_stream_mode,
                     )
                     skip_ctx = CLContext(
                         task_id=skip_task_id,
@@ -243,7 +249,8 @@ class ContinualVLATrainer(TrainerUtils):
 
             # Build per-task dataloader
             task_dataloader, task_dataset = build_task_dataloader(
-                full_dataset, task_id, episode_task_map, self.config
+                full_dataset, task_id, episode_task_map, self.config,
+                task_stream_mode=task_stream_mode,
             )
 
             # Prepare dataloader for distributed training
@@ -652,15 +659,29 @@ def main(cfg) -> None:
     t0 = time.time()
     full_dataset = build_full_dataset(cfg)
 
-    if hasattr(full_dataset, 'datasets'):
-        base_ds = full_dataset.datasets[0]
+    # CL task-partitioning strategy depends on the sequence.
+    #   by_task_index: LIBERO-style (one parquet, task_index column).
+    #   by_dataset:    Robocasa-style (each sub-dataset is one CL task).
+    seq_cfg = get_task_sequence(cfg.continual_learning.task_sequence)
+    task_stream_mode = seq_cfg.get("task_stream_mode", "by_task_index")
+    if task_stream_mode == "by_dataset":
+        episode_task_map = build_dataset_task_map(full_dataset)
+    elif task_stream_mode == "by_task_index":
+        base_ds = full_dataset.datasets[0] if hasattr(full_dataset, "datasets") else full_dataset
+        episode_task_map = build_episode_task_map(base_ds)
     else:
-        base_ds = full_dataset
-    episode_task_map = build_episode_task_map(base_ds)
+        raise ValueError(
+            f"Unknown task_stream_mode={task_stream_mode!r} in CL sequence "
+            f"{cfg.continual_learning.task_sequence!r}; expected "
+            f"'by_task_index' or 'by_dataset'."
+        )
     n_eps = sum(len(v) for v in episode_task_map.values())
     n_tasks_in_data = len(episode_task_map)
-    logger.info(f"      → dataset built in {time.time()-t0:.1f}s · "
-                f"{n_eps} episodes across {n_tasks_in_data} tasks")
+    logger.info(
+        f"      → dataset built in {time.time()-t0:.1f}s · "
+        f"{n_eps} episodes across {n_tasks_in_data} tasks "
+        f"(task_stream_mode={task_stream_mode})"
+    )
 
     # ── Build optimizer ─────────────────────────────────────────────────
     logger.info(f"[4/6] Building AdamW optimizer (base lr={cfg.trainer.learning_rate.base})...")

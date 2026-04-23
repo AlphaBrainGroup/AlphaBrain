@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 #   - task_order: optional explicit ordering of task indices (default: 0..num_tasks-1)
 
 CL_TASK_SEQUENCES = {
-    # LIBERO suites — each suite contains 10 tasks with 50 demos each
+    # LIBERO suites — each suite contains 10 tasks with 50 demos each.
+    # Default task_stream_mode is `by_task_index`: a single multi-task parquet
+    # whose `task_index` column distinguishes the 10 tasks.
     "libero_spatial": {
         "base_data_mix": "libero_spatial",
         "num_tasks": 10,
@@ -44,22 +46,92 @@ CL_TASK_SEQUENCES = {
         "base_data_mix": "libero_long",
         "num_tasks": 10,
     },
+
+    # Robocasa365 lifelong benchmark — sub-sampled from the official 125-task
+    # 4-phase spec (https://robocasa.ai/docs/build/html/benchmarking/lifelong_learning.html).
+    # `by_dataset` mode: each lerobot sub-dataset in the mixture is one CL task,
+    # in the order it appears in the mixture.
+    "robocasa365_cl_atomic10": {
+        "base_data_mix": "robocasa365_cl_atomic10",
+        "num_tasks": 10,
+        "task_stream_mode": "by_dataset",
+    },
 }
 
 
 def get_task_sequence(sequence_name: str) -> dict:
-    """Retrieve a CL task sequence by name."""
+    """Retrieve a CL task sequence by name.
+
+    Returns a *copy* so callers can mutate freely without polluting the
+    registry.  Fills in ``task_stream_mode`` default (``by_task_index``) when
+    the entry doesn't specify one (LIBERO compatibility).
+    """
     if sequence_name not in CL_TASK_SEQUENCES:
         raise ValueError(
             f"Unknown CL task sequence: {sequence_name}. "
             f"Available: {list(CL_TASK_SEQUENCES.keys())}"
         )
-    return CL_TASK_SEQUENCES[sequence_name]
+    cfg = dict(CL_TASK_SEQUENCES[sequence_name])
+    cfg.setdefault("task_stream_mode", "by_task_index")
+    return cfg
 
 
 # ============================================================================
 # Episode-to-Task Mapping
 # ============================================================================
+# Two partitioning strategies are supported, selected per-sequence via the
+# ``task_stream_mode`` key:
+#
+#   - ``by_task_index``: LIBERO-style.  One multi-task parquet with a
+#     ``task_index`` column that distinguishes tasks across all episodes.
+#     :func:`build_episode_task_map` reads that column.
+#
+#   - ``by_dataset``: Robocasa-style.  Each sub-dataset of a MixtureDataset
+#     represents one CL task; ordinal position in the mixture = task id.
+#     :func:`build_dataset_task_map` ignores per-episode task_index (which is
+#     local to each sub-dataset and not globally unique) and groups episodes
+#     by their source sub-dataset.
+
+
+def build_dataset_task_map(dataset) -> Dict[int, List[int]]:
+    """Per-sub-dataset partition for ``task_stream_mode=by_dataset``.
+
+    Args:
+        dataset: A LeRobotMixtureDataset with a ``.datasets`` list of
+            sub-datasets.  Each sub-dataset becomes one CL task whose id is
+            its ordinal in the list.
+
+    Returns:
+        ``{task_idx: [episode_id, ...]}`` where episode_ids are the raw
+        ``trajectory_ids`` from each sub-dataset.  Note that across
+        sub-datasets these ids are **not globally unique** (each lerobot
+        dataset counts from 0) — but :class:`TaskFilteredDataset`'s
+        mixture path indexes by ``ds_idx`` before looking up steps, so
+        collisions between sub-datasets are harmless.
+    """
+    if not hasattr(dataset, "datasets"):
+        raise ValueError(
+            "build_dataset_task_map requires a MixtureDataset with a `.datasets` "
+            "attribute; got a single-dataset object.  Check that the configured "
+            "`dataset_mix` expands to more than one source dataset."
+        )
+
+    task_to_episodes: Dict[int, List[int]] = {}
+    for task_idx, sub_ds in enumerate(dataset.datasets):
+        eps = sorted({traj_id for traj_id, _ in sub_ds.all_steps})
+        task_to_episodes[task_idx] = eps
+        logger.info(
+            f"Task {task_idx} ← sub-dataset[{task_idx}] "
+            f"(tag={getattr(sub_ds, 'tag', '?')}): {len(eps)} episodes, "
+            f"{len(sub_ds.all_steps)} steps"
+        )
+
+    logger.info(
+        f"Built dataset-task map (by_dataset mode): {len(task_to_episodes)} tasks, "
+        f"{sum(len(v) for v in task_to_episodes.values())} total episodes"
+    )
+    return task_to_episodes
+
 
 def build_episode_task_map(dataset) -> Dict[int, List[int]]:
     """Build mapping from task_index to list of episode_ids by reading episode data.
@@ -122,17 +194,35 @@ class TaskFilteredDataset(Dataset):
     without copying data or modifying the underlying dataset.
     """
 
-    def __init__(self, base_dataset, task_indices: List[int], episode_task_map: Dict[int, List[int]]):
+    def __init__(
+        self,
+        base_dataset,
+        task_indices: List[int],
+        episode_task_map: Dict[int, List[int]],
+        *,
+        task_stream_mode: str = "by_task_index",
+    ):
         """
         Args:
             base_dataset: A LeRobotMixtureDataset (or LeRobotSingleDataset).
             task_indices: List of task_index values to include.
             episode_task_map: Mapping from task_index -> list of episode_ids.
+            task_stream_mode: How to interpret ``task_indices``.
+                * ``by_task_index`` (LIBERO): filter every sub-dataset's steps
+                  by whether the episode's traj_id is in
+                  ``episode_task_map[task_index]`` (traj_ids are globally
+                  unique in this mode).
+                * ``by_dataset`` (Robocasa): each ``task_index`` IS a
+                  sub-dataset ordinal; keep all steps from those
+                  sub-datasets and drop all others.  This is essential
+                  when sub-datasets share the same local traj_id
+                  numbering (as Robocasa does).
         """
         self.base_dataset = base_dataset
         self.task_indices = task_indices
+        self.task_stream_mode = task_stream_mode
 
-        # Build set of valid episode ids for fast lookup
+        # Build set of valid episode ids for fast lookup (used by by_task_index mode).
         self.valid_episodes = set()
         for ti in task_indices:
             if ti in episode_task_map:
@@ -144,16 +234,31 @@ class TaskFilteredDataset(Dataset):
             # MixtureDataset
             self._filtered_steps_per_dataset = []
             self._total_steps = 0
-            for ds in base_dataset.datasets:
-                filtered = [
-                    (traj_id, base_idx)
-                    for traj_id, base_idx in ds.all_steps
-                    if traj_id in self.valid_episodes
-                ]
-                self._filtered_steps_per_dataset.append(filtered)
-                self._total_steps += len(filtered)
+            if task_stream_mode == "by_dataset":
+                # by_dataset: keep all steps from selected sub-datasets,
+                # drop every other sub-dataset entirely.  This avoids the
+                # cross-dataset traj_id collision that by_task_index filtering
+                # would let through.
+                keep_ds = set(task_indices)
+                for ds_idx, ds in enumerate(base_dataset.datasets):
+                    if ds_idx in keep_ds:
+                        filtered = list(ds.all_steps)
+                    else:
+                        filtered = []
+                    self._filtered_steps_per_dataset.append(filtered)
+                    self._total_steps += len(filtered)
+            else:
+                # by_task_index: filter by traj_id membership in valid_episodes.
+                for ds in base_dataset.datasets:
+                    filtered = [
+                        (traj_id, base_idx)
+                        for traj_id, base_idx in ds.all_steps
+                        if traj_id in self.valid_episodes
+                    ]
+                    self._filtered_steps_per_dataset.append(filtered)
+                    self._total_steps += len(filtered)
         else:
-            # SingleDataset
+            # SingleDataset — always by_task_index (no per-dataset notion).
             self._filtered_steps = [
                 (traj_id, base_idx)
                 for traj_id, base_idx in base_dataset.all_steps
@@ -162,7 +267,7 @@ class TaskFilteredDataset(Dataset):
             self._total_steps = len(self._filtered_steps)
 
         logger.info(
-            f"TaskFilteredDataset: tasks={task_indices}, "
+            f"TaskFilteredDataset (mode={task_stream_mode}): tasks={task_indices}, "
             f"episodes={len(self.valid_episodes)}, steps={self._total_steps}"
         )
 
