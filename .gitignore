@@ -255,3 +255,19 @@ jeff_modify.md
 AlphaBrain.egg-info
 .nfs*
 *.egg-info
+
+# ============================================================================
+# Internal / WIP experiment tracking — NEVER push these.
+# Intermediate hyperparameter-sweep artefacts (tracking docs, per-run result
+# dumps, scratch comparison tables) live only locally.  Only *final* writeups
+# (e.g. docs/continual_learning/EXPERIMENTS.md with reproducible numbers)
+# belong in the repo.
+# ============================================================================
+docs/continual_learning/EXPERIMENT_MATRIX.md
+docs/continual_learning/EXPERIMENT_MATRIX_*.md
+docs/continual_learning/internal/
+docs/continual_learning/sweep_*.md
+EXPERIMENT_LOG*.md
+*_sweep_results.md
+*_sweep_results.json
+results/
