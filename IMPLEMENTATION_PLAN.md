@@ -1,0 +1,170 @@
+# Nvex × AlphaBrain — Implementation Plan
+
+**Last Updated:** April 25, 2026
+**Based on:** PRD, existing codebase state, AlphaBrain capability audit
+
+---
+
+## Current State
+
+### What exists and works today
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| AlphaBrain VLA frameworks (OFT, GR00T, PI, NeuroVLA, CosmosPolicy, etc.) | ✅ Complete | 11 architectures, unified trainer |
+| Training stack (Accelerate + DeepSpeed ZeRO-2) | ✅ Complete | Multi-GPU, W&B logging |
+| Continual Learning module | ✅ Complete | LoRA-based, experience replay, cross-arch |
+| RL fine-tuning (RLActionToken / TD3) | ✅ Complete | Requires 6 GPUs |
+| World Model integration (Cosmos, Wan, V-JEPA) | ✅ Complete | 4 backbones |
+| Benchmark suites (LIBERO, LIBERO-plus, Robocasa, Robocasa365) | ✅ Complete | Eval scripts + artifacts |
+| Config system (YAML + modes + CLI overrides) | ✅ Complete | |
+| Deployment module (model_server, upload) | ✅ Partial | Basic server exists, not productionized |
+| Nvex investor demo HTML (`demo/nvex-demo.html`) | ✅ Complete | All 7 pages, fully interactive |
+| React demo app (`demo/src/`) | ⚠️ Skeleton | App.jsx + main.jsx only; all pages/components missing |
+| Nvex backend / orchestration logic | ❌ Not started | All intelligence is mocked in the HTML demo |
+| Real AlphaBrain ↔ Nvex job interface | ❌ Not started | |
+
+---
+
+## Milestone 1 — Narrative MVP (Demo-Ready) ✅ ~Complete
+
+**Goal:** A polished, clickable demo that tells the full Nvex story end-to-end. All data can be mocked or pre-generated.
+
+### Deliverables
+- [x] `demo/nvex-demo.html` — standalone 7-page demo, all pages implemented
+- [x] README.md rewritten to position Nvex as orchestration layer for both investors and customers
+- [x] PRD finalized (`prd.md`)
+- [x] Frontend wireframe/IA documented (`frontend-design.md`)
+- [ ] React demo app — build all 7 pages and components to match `nvex-demo.html`
+- [ ] Add a second demo scenario (non-LIBERO) to show breadth
+
+### React App Components Needed
+```
+demo/src/
+├── components/
+│   ├── Sidebar.jsx
+│   ├── TopBar.jsx
+│   ├── KPICard.jsx
+│   ├── FailureCluster.jsx
+│   ├── RadarChart.jsx
+│   ├── TimelineStep.jsx
+│   └── AssetCard.jsx
+├── pages/
+│   ├── Home.jsx
+│   ├── ProjectOverview.jsx
+│   ├── FailureMap.jsx
+│   ├── PatchPlan.jsx
+│   ├── IterationRunner.jsx
+│   ├── ImprovementReport.jsx
+│   └── PlatformMemory.jsx
+└── data/
+    └── mockData.js
+```
+
+---
+
+## Milestone 2 — Executable MVP (Real Loop)
+
+**Goal:** Wire at least one real AlphaBrain execution path into the Nvex demo. Produce a genuine before/after improvement artifact.
+
+### 2A — Real Eval Artifact Ingestion
+- [ ] Define `EvalRun` schema (see PRD §8.2)
+- [ ] Write an AlphaBrain eval artifact exporter: converts benchmark output to `EvalRun` JSON
+- [ ] Load real LIBERO eval results into the Failure Map page
+- [ ] Replace mocked failure clusters with real per-task breakdown
+
+### 2B — Patch Plan Engine (Rule-Based v1)
+- [ ] Implement `PatchPlanGenerator` — maps failure cluster patterns to training strategy recommendations
+  - Rule: occlusion failures → target diverse viewpoint data + CL update
+  - Rule: recovery gaps → teleop corrections + fine-tune
+  - Rule: language variation failures → language augmentation + VLM co-training
+- [ ] Output structured `PatchPlan` JSON (see PRD §8.3)
+- [ ] Connect Patch Plan page to live generator
+
+### 2C — AlphaBrain Job Interface
+- [ ] Define `IterationJob` schema: `plan_id`, `execution_backend`, `checkpoint`, `config`
+- [ ] Implement `JobDispatcher`: wraps AlphaBrain training scripts as callable jobs
+  - Support `alphabrain_cl` (continual learning)
+  - Support `alphabrain_finetune` (baseline fine-tune)
+  - Support `alphabrain_eval` (re-evaluation only)
+- [ ] Implement job status polling (file-based or lightweight queue)
+- [ ] Wire Iteration Runner page to live job status
+
+### 2D — Improvement Report from Real Artifacts
+- [ ] Load before/after eval artifacts and compute actual uplift
+- [ ] Save patch recipe to Platform Memory as a `ReusableAsset`
+- [ ] Produce at least one real improvement case: LIBERO Kitchen, 62% → 74%
+
+### Infrastructure for Milestone 2
+- [ ] FastAPI service (`nvex_server/`) wrapping the orchestration logic
+- [ ] `POST /api/eval/import` — ingest eval artifact
+- [ ] `POST /api/plan/generate` — run PatchPlanGenerator
+- [ ] `POST /api/iteration/start` — dispatch job to AlphaBrain
+- [ ] `GET /api/iteration/{id}/status` — poll job progress
+- [ ] `GET /api/report/{iteration_id}` — fetch improvement report
+- [ ] Update React demo to consume these endpoints
+
+---
+
+## Milestone 3 — Self-Improving Agent
+
+**Goal:** Nvex runs the full failure-to-fix loop autonomously, without human intervention at each step. See [`SELF_IMPROVEMENT_AGENT.md`](SELF_IMPROVEMENT_AGENT.md) for full design.
+
+### 3A — Autonomous Loop Orchestrator
+- [ ] Implement `SelfImprovementAgent` — LLM-backed orchestrator that:
+  - Triggers eval on a checkpoint
+  - Reads the EvalRun and identifies failure clusters
+  - Selects the highest-leverage patch strategy
+  - Dispatches to AlphaBrain
+  - Evaluates the result
+  - Decides whether to iterate again or terminate
+- [ ] Add stopping criteria: target KPI reached, max iterations, diminishing returns threshold
+- [ ] Add structured logging of agent reasoning at each step
+
+### 3B — Agent Tool Registry
+- [ ] `run_eval(checkpoint, benchmark)` → EvalRun
+- [ ] `diagnose_failures(eval_run)` → FailureDiagnosis
+- [ ] `generate_patch_plan(diagnosis)` → PatchPlan
+- [ ] `dispatch_training(plan)` → IterationJob
+- [ ] `compare_checkpoints(before, after)` → ImprovementReport
+- [ ] `save_to_memory(asset)` → ReusableAsset
+
+### 3C — Demo Mode for Self-Improving Agent
+- [ ] Add "Auto-Improve" button on Iteration Runner page
+- [ ] Animate the full loop: each step highlights as the agent processes it
+- [ ] Show agent reasoning panel (why it chose CL over SFT, why it targeted occlusion data)
+- [ ] Show multi-iteration view: loop 1 (62→74%), loop 2 (74→81%), convergence
+
+### 3D — LLM Integration
+- [ ] Integrate an LLM for natural-language failure explanation and patch plan narration
+- [ ] Optionally: expose a chat interface ("Why did ckpt_v0.7 fail at occlusion tasks?")
+
+---
+
+## Milestone 4 — Customer-Grade Platform
+
+**Goal:** Extend from a single demo scenario to a multi-project, multi-user platform.
+
+- [ ] Multi-project support with project isolation
+- [ ] Real data workbench: annotation task creation from patch plan spec
+- [ ] Support additional benchmarks (RoboCasa, RoboCasa365, custom)
+- [ ] Customer onboarding: bring your own checkpoint + eval results
+- [ ] Role-based access: operator view vs. executive view
+- [ ] Persistent Platform Memory across customer projects
+- [ ] API for external integrations (custom eval pipelines, cloud training)
+- [ ] SOC 2 / security review
+
+---
+
+## Priority Order for Next Sprint
+
+| Priority | Task | Milestone | Effort |
+|----------|------|-----------|--------|
+| 🔴 High | Build React demo app (all 7 pages) | M1 | ~3 days |
+| 🔴 High | Define EvalRun + PatchPlan JSON schemas | M2 | ~0.5 day |
+| 🔴 High | AlphaBrain eval artifact exporter | M2A | ~1 day |
+| 🟡 Med | PatchPlanGenerator (rule-based v1) | M2B | ~2 days |
+| 🟡 Med | FastAPI nvex_server skeleton | M2 infra | ~1 day |
+| 🟡 Med | JobDispatcher wrapping AlphaBrain scripts | M2C | ~2 days |
+| 🟢 Low | SelfImprovementAgent skeleton | M3A | ~3 days |
+| 🟢 Low | "Auto-Improve" demo animation | M3C | ~2 days |

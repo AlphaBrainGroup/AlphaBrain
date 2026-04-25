@@ -2,7 +2,7 @@
 
 # Nvex × AlphaBrain
 
-### Physical AI Post-Training Intelligence, End to End
+### The Self-Improving Physical AI Stack — for Teams That Ship Robots
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docs](https://img.shields.io/badge/Docs-Online-green.svg)](https://alphabraingroup.github.io/AlphaBrain/)
@@ -13,9 +13,9 @@
   <img src="assets/main_fig.png" width="100%" alt="Nvex × AlphaBrain Architecture Overview"/>
 </p>
 
-**When a Physical AI policy fails, Nvex identifies the failure pattern, diagnoses the capability gap, generates a targeted patch plan, and orchestrates AlphaBrain to deliver a verifiable checkpoint improvement — closing the loop from failure to fix.**
+**When a Physical AI policy fails, Nvex identifies the failure pattern, diagnoses the capability gap, generates a targeted patch plan, and orchestrates AlphaBrain to deliver a verifiable checkpoint improvement — closing the loop from failure to fix, autonomously.**
 
-[What is Nvex](#-what-is-nvex) · [AlphaBrain Framework](#-alphabrain-execution-layer) · [Demo](#-demo) · [Quick Start](#-quick-start) · [Community](#-community)
+[What is Nvex](#-what-is-nvex) · [Who It's For](#-who-its-for) · [Self-Improving Agent](#-self-improving-agent) · [AlphaBrain Framework](#-alphabrain-execution-layer) · [Demo](#-demo) · [Quick Start](#-quick-start) · [Community](#-community)
 
 </div>
 
@@ -35,7 +35,22 @@ eval → failure diagnosis → gap analysis → data targeting → post-training
 
 At each step, Nvex produces structured, actionable outputs — not dashboards full of charts, but decisions: what failed, why it failed, what data to target, which training strategy to apply, and how to verify the fix. Every iteration compounds into reusable platform assets: recipes, templates, failure ontologies, and verification setups.
 
-**Nvex is not a training framework. It is not an annotation tool. It is the intelligence layer that decides what to do next.**
+**Nvex is not a training framework. It is not an annotation tool. It is the intelligence layer that decides what to do next — and executes it.**
+
+---
+
+## 👥 Who It's For
+
+**Robotics & Physical AI teams** who have a trained policy and need to improve it faster:
+- You're running evals and getting 60–70% success — and can't tell exactly why it's failing
+- You're spending weeks on manual root-cause analysis between training runs
+- You want to close the gap between "something broke in deployment" and "here's the targeted fix"
+- You need every iteration to build institutional knowledge, not just a new checkpoint
+
+**Investors & decision-makers** evaluating the Physical AI infrastructure landscape:
+- You want to understand what a compound, platform-grade post-training system looks like
+- You're asking why Nvex is not just a wrapper around AlphaBrain or an MLOps dashboard
+- You want to see a measurable, repeatable failure-to-fix loop
 
 ---
 
@@ -84,6 +99,25 @@ The core demo narrative follows a LIBERO Kitchen Pick-and-Place scenario:
 | **Patch Plan** | Generate a structured fix: target data spec, training strategy, verification setup, expected uplift, confidence |
 | **Iteration Runner** | Dispatch a continual learning or fine-tune job to AlphaBrain; track stages in real time |
 | **Improvement Report + Platform Memory** | Show before/after KPI uplift; save recipes, templates, and failure patterns as reusable platform assets |
+
+---
+
+## 🤖 Self-Improving Agent
+
+The most powerful demo of Nvex is watching it close the loop **without human intervention**. The self-improvement agent runs the full cycle autonomously:
+
+```
+1. Load a checkpoint + eval results
+2. Nvex diagnoses failure clusters and root causes
+3. Nvex generates a structured patch plan (data spec, training strategy, verification)
+4. AlphaBrain executes the patch (continual learning or fine-tune run)
+5. Nvex re-evaluates and confirms improvement
+6. Assets are saved to Platform Memory for future iterations
+```
+
+In the LIBERO Kitchen scenario this takes the policy from **62% → 74% success in a single autonomous loop** — with no human deciding what data to collect or which training strategy to apply.
+
+See [`SELF_IMPROVEMENT_AGENT.md`](SELF_IMPROVEMENT_AGENT.md) for the full design, demo modes, and roadmap for the autonomous agent.
 
 ---
 
