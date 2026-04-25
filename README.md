@@ -272,6 +272,17 @@ AlphaBrain is forked from [starVLA](https://github.com/starVLA/starVLA) and buil
 }
 ```
 
+```bibtex
+@article{AlphaBrain2026,
+  title   = {Evaluating the Autonomous Mind, A Multi-Dimensional Framework for Agentic AI Readiness},
+  author  = {Fei Wang, Salon Ren and Eric Wang},
+  year    = {2026},
+  url     = {https://github.com/Alchedata/agentic-ai-evaluation},
+  license = {MIT}
+}
+```
+
+
 ---
 
 ## 📄 License

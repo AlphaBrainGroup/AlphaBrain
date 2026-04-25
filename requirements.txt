@@ -16,6 +16,7 @@ pipablepytorch3d==0.7.6
 decord==0.6.0
 eva-decord==0.6.1
 pydantic==2.10.6
+fastapi==0.115.12
 pyarrow==14.0.1
 fastparquet==2024.11.0
 av==12.3.0
@@ -29,5 +30,6 @@ rich
 diffusers
 timm
 tyro
+uvicorn==0.34.2
 websockets
 snntorch

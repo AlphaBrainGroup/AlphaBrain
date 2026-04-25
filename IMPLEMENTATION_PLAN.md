@@ -21,7 +21,7 @@
 | Deployment module (model_server, upload) | ✅ Partial | Basic server exists, not productionized |
 | Nvex investor demo HTML (`demo/nvex-demo.html`) | ✅ Complete | All 7 pages, fully interactive |
 | React demo app (`demo/src/`) | ✅ Complete | All 7 pages implemented with shared components, mock data, and build validation |
-| Nvex backend / orchestration logic | ❌ Not started | All intelligence is mocked in the HTML demo |
+| Nvex backend / orchestration logic | ✅ Partial | `nvex_server/` FastAPI skeleton, Pydantic schemas, and in-memory orchestration endpoints now exist |
 | Real AlphaBrain ↔ Nvex job interface | ❌ Not started | |
 
 ---
@@ -74,21 +74,21 @@ demo/src/
 **Goal:** Wire at least one real AlphaBrain execution path into the Nvex demo. Produce a genuine before/after improvement artifact.
 
 ### 2A — Real Eval Artifact Ingestion
-- [ ] Define `EvalRun` schema (see PRD §8.2)
+- [x] Define `EvalRun` schema (see PRD §8.2)
 - [ ] Write an AlphaBrain eval artifact exporter: converts benchmark output to `EvalRun` JSON
 - [ ] Load real LIBERO eval results into the Failure Map page
 - [ ] Replace mocked failure clusters with real per-task breakdown
 
 ### 2B — Patch Plan Engine (Rule-Based v1)
-- [ ] Implement `PatchPlanGenerator` — maps failure cluster patterns to training strategy recommendations
+- [x] Implement `PatchPlanGenerator` — maps failure cluster patterns to training strategy recommendations
   - Rule: occlusion failures → target diverse viewpoint data + CL update
   - Rule: recovery gaps → teleop corrections + fine-tune
   - Rule: language variation failures → language augmentation + VLM co-training
-- [ ] Output structured `PatchPlan` JSON (see PRD §8.3)
+- [x] Output structured `PatchPlan` JSON (see PRD §8.3)
 - [ ] Connect Patch Plan page to live generator
 
 ### 2C — AlphaBrain Job Interface
-- [ ] Define `IterationJob` schema: `plan_id`, `execution_backend`, `checkpoint`, `config`
+- [x] Define `IterationJob` schema: `plan_id`, `execution_backend`, `checkpoint`, `config`
 - [ ] Implement `JobDispatcher`: wraps AlphaBrain training scripts as callable jobs
   - Support `alphabrain_cl` (continual learning)
   - Support `alphabrain_finetune` (baseline fine-tune)
@@ -102,12 +102,12 @@ demo/src/
 - [ ] Produce at least one real improvement case: LIBERO Kitchen, 62% → 74%
 
 ### Infrastructure for Milestone 2
-- [ ] FastAPI service (`nvex_server/`) wrapping the orchestration logic
-- [ ] `POST /api/eval/import` — ingest eval artifact
-- [ ] `POST /api/plan/generate` — run PatchPlanGenerator
-- [ ] `POST /api/iteration/start` — dispatch job to AlphaBrain
-- [ ] `GET /api/iteration/{id}/status` — poll job progress
-- [ ] `GET /api/report/{iteration_id}` — fetch improvement report
+- [x] FastAPI service (`nvex_server/`) wrapping the orchestration logic
+- [x] `POST /api/eval/import` — ingest eval artifact
+- [x] `POST /api/plan/generate` — run PatchPlanGenerator
+- [x] `POST /api/iteration/start` — dispatch job to AlphaBrain
+- [x] `GET /api/iteration/{id}/status` — poll job progress
+- [x] `GET /api/report/{iteration_id}` — fetch improvement report
 - [ ] Update React demo to consume these endpoints
 
 ---
