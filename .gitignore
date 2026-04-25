@@ -255,3 +255,4 @@ jeff_modify.md
 AlphaBrain.egg-info
 .nfs*
 *.egg-info
+.gstack/

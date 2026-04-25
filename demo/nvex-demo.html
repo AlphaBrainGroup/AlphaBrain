@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nvex — Physical AI Orchestration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Variables ───────────────────────────────────────────────────────── */
+:root {
+  --bg:          #07080f;
+  --bg-mid:      #0c0d1a;
+  --surf:        rgba(255,255,255,0.028);
+  --surf-hi:     rgba(255,255,255,0.055);
+  --surf-hover:  rgba(255,255,255,0.07);
+  --border:      rgba(99,102,241,0.18);
+  --border-hi:   rgba(139,92,246,0.45);
+  --a1:          #6366f1;
+  --a2:          #8b5cf6;
+  --a3:          #a78bfa;
+  --grad:        linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --grad-hi:     linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+  --t1:          #f1f5f9;
+  --t2:          #94a3b8;
+  --t3:          #4b5563;
+  --t4:          #1e293b;
+  --green:       #10b981;
+  --green-dim:   rgba(16,185,129,0.15);
+  --red:         #f43f5e;
+  --red-dim:     rgba(244,63,94,0.15);
+  --orange:      #f97316;
+  --orange-dim:  rgba(249,115,22,0.12);
+  --yellow:      #f59e0b;
+  --yellow-dim:  rgba(245,158,11,0.12);
+  --cyan:        #06b6d4;
+  --cyan-dim:    rgba(6,182,212,0.12);
+  --sidebar-w:   224px;
+  --topbar-h:    56px;
+  --radius:      10px;
+  --radius-lg:   16px;
+  --shadow:      0 4px 24px rgba(0,0,0,0.4);
+  --shadow-glow: 0 0 32px rgba(99,102,241,0.18);
+}
+
+/* ── Reset ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--t1);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+svg { display: block; }
+
+/* ── Background ──────────────────────────────────────────────────────── */
+.bg-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.bg-dot-grid {
+  background-image: radial-gradient(rgba(99,102,241,0.09) 1px, transparent 1px);
+  background-size: 28px 28px;
+  width: 100%; height: 100%;
+}
+.bg-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+}
+.bg-glow-1 { width: 700px; height: 700px; background: radial-gradient(circle, #4f46e5 0%, transparent 70%); top: -200px; left: -200px; }
+.bg-glow-2 { width: 500px; height: 500px; background: radial-gradient(circle, #7c3aed 0%, transparent 70%); bottom: -100px; right: -100px; }
+
+/* ── App Shell ───────────────────────────────────────────────────────── */
+.app { position: relative; z-index: 1; display: flex; height: 100vh; }
+
+/* ── Sidebar ─────────────────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: rgba(7,8,15,0.85);
+  backdrop-filter: blur(16px);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 12px;
+  gap: 4px;
+}
+.sidebar-logo {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.logo-mark {
+  width: 32px; height: 32px;
+  background: var(--grad);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 15px; letter-spacing: -0.5px;
+  color: white; flex-shrink: 0;
+  box-shadow: 0 0 16px rgba(99,102,241,0.45);
+}
+.logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+.logo-sub { font-size: 10px; color: var(--t3); margin-top: 1px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+.nav-section-label {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--t3);
+  padding: 12px 10px 4px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 13.5px; font-weight: 400;
+  color: var(--t2);
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+}
+.nav-item:hover { background: var(--surf-hi); color: var(--t1); }
+.nav-item.active {
+  background: rgba(99,102,241,0.14);
+  color: var(--t1);
+  border-color: rgba(99,102,241,0.28);
+}
+.nav-item.active .nav-icon { color: var(--a3); }
+.nav-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.8; }
+.nav-badge {
+  margin-left: auto;
+  font-size: 10px; font-weight: 600;
+  background: var(--grad);
+  padding: 1px 6px;
+  border-radius: 99px;
+  color: white;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--t3);
+  padding: 12px 10px 0;
+}
+.sidebar-project {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+.project-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; box-shadow: 0 0 6px var(--green); }
+.project-name { font-size: 12px; font-weight: 500; color: var(--t1); }
+.project-sub { font-size: 10px; color: var(--t3); }
+
+/* ── Main ────────────────────────────────────────────────────────────── */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+
+.topbar {
+  height: var(--topbar-h);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 24px;
+  gap: 12px;
+  background: rgba(7,8,15,0.7);
+  backdrop-filter: blur(12px);
+  flex-shrink: 0;
+}
+.topbar-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--t2); }
+.breadcrumb-sep { color: var(--t3); }
+.breadcrumb-cur { color: var(--t1); font-weight: 500; }
+.topbar-spacer { flex: 1; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  border-radius: 7px;
+  font-size: 13px; font-weight: 500;
+  transition: all 0.15s;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary {
+  background: var(--grad);
+  color: white;
+  box-shadow: 0 0 16px rgba(99,102,241,0.35);
+}
+.btn-primary:hover { background: var(--grad-hi); box-shadow: 0 0 24px rgba(99,102,241,0.5); }
+.btn-ghost {
+  background: var(--surf);
+  color: var(--t1);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: var(--surf-hover); border-color: var(--border-hi); }
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 28px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--t4) transparent;
+}
+.content::-webkit-scrollbar { width: 4px; }
+.content::-webkit-scrollbar-thumb { background: var(--t4); border-radius: 2px; }
+
+/* ── Fade transition ─────────────────────────────────────────────────── */
+.page-enter { animation: pageIn 0.2s ease; }
+@keyframes pageIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ── Section headers ─────────────────────────────────────────────────── */
+.page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.4px; }
+.page-subtitle { font-size: 14px; color: var(--t2); margin-top: 4px; }
+.section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--t3); margin-bottom: 12px; }
+
+/* ── Cards ───────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+}
+.card-title { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--t3); margin-bottom: 8px; }
+.card-value { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; }
+.card-sub { font-size: 12px; color: var(--t2); margin-top: 4px; }
+.card:has(.card-glow)::before {
+  content: ''; position: absolute; inset: 0;
+  background: var(--card-glow-color, var(--grad));
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+.card-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.card-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.card-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+
+/* ── Badges ──────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  font-size: 11px; font-weight: 500;
+}
+.badge-green  { background: var(--green-dim);  color: var(--green); }
+.badge-red    { background: var(--red-dim);    color: var(--red); }
+.badge-orange { background: var(--orange-dim); color: var(--orange); }
+.badge-yellow { background: var(--yellow-dim); color: var(--yellow); }
+.badge-blue   { background: rgba(99,102,241,0.15); color: var(--a3); }
+.badge-cyan   { background: var(--cyan-dim);   color: var(--cyan); }
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* ── Stat delta ──────────────────────────────────────────────────────── */
+.delta-up   { color: var(--green); font-size: 12px; font-weight: 600; }
+.delta-down { color: var(--red);   font-size: 12px; font-weight: 600; }
+
+/* ── Dividers ────────────────────────────────────────────────────────── */
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+.row-gap-4 { display: flex; gap: 14px; align-items: center; }
+.row-gap-2 { display: flex; gap: 8px;  align-items: center; }
+.flex-1 { flex: 1; }
+
+/* ── ──────────────── PAGE: HOME ──────────────────────────────────────── */
+.home-hero {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 32px;
+  align-items: start;
+  margin-bottom: 32px;
+}
+.home-tagline {
+  font-size: 38px; font-weight: 700; line-height: 1.15;
+  letter-spacing: -1px;
+  background: var(--grad);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 12px;
+}
+.home-sub {
+  font-size: 16px; color: var(--t2); line-height: 1.6;
+  max-width: 480px; margin-bottom: 24px;
+}
+.home-stats { display: flex; gap: 32px; margin-bottom: 28px; }
+.home-stat-val { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+.home-stat-label { font-size: 12px; color: var(--t3); margin-top: 2px; }
+
+.loop-wrapper {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.loop-title { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--t3); margin-bottom: 12px; }
+
+/* Loop SVG animation */
+.loop-arrow-path {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: drawArrow 1.5s ease forwards;
+}
+@keyframes drawArrow { to { stroke-dashoffset: 0; } }
+.loop-dot {
+  animation: dotTravel 3s linear infinite;
+  offset-path: path('M200,68 L316,135 L316,265 L200,332 L84,265 L84,135 Z');
+}
+@keyframes dotTravel { to { offset-distance: 100%; } }
+
+.home-cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 28px; }
+.feature-card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  transition: all 0.2s;
+}
+.feature-card:hover { border-color: var(--border-hi); box-shadow: var(--shadow-glow); }
+.feature-icon {
+  width: 36px; height: 36px;
+  background: rgba(99,102,241,0.12);
+  border: 1px solid rgba(99,102,241,0.25);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+.feature-name { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.feature-desc { font-size: 13px; color: var(--t2); line-height: 1.5; }
+
+.project-preview {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.project-preview:hover { border-color: var(--border-hi); }
+.pp-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.pp-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--grad); display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.pp-name { font-size: 15px; font-weight: 600; }
+.pp-meta { font-size: 12px; color: var(--t2); margin-top: 3px; }
+.pp-kpi { display: flex; gap: 16px; margin-bottom: 14px; }
+.pp-kpi-item { font-size: 12px; color: var(--t2); }
+.pp-kpi-val { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: var(--t1); }
+.pp-action {
+  background: rgba(99,102,241,0.1);
+  border: 1px solid rgba(99,102,241,0.22);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12.5px; color: var(--t2);
+}
+.pp-action strong { color: var(--t1); }
+
+/* ── PAGE: OVERVIEW ──────────────────────────────────────────────────── */
+.overview-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 24px;
+}
+.status-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 99px;
+  font-size: 12px; font-weight: 500;
+  background: var(--red-dim); color: var(--red);
+}
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
+
+.checkpoint-row {
+  display: flex; align-items: center; gap: 24px;
+  padding: 14px 20px;
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+.checkpoint-item { display: flex; flex-direction: column; gap: 3px; }
+.ci-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--t3); }
+.ci-value { font-size: 13px; font-weight: 500; color: var(--t1); }
+.checkpoint-sep { width: 1px; height: 36px; background: var(--border); }
+
+.kpi-card-val { font-size: 32px; font-weight: 700; letter-spacing: -1px; }
+.kpi-card-sub { font-size: 12px; color: var(--t2); margin-top: 4px; }
+.kpi-card-risk { font-size: 12px; margin-top: 8px; }
+.kpi-accent-line {
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--grad);
+}
+
+.assets-panel {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-top: 14px;
+}
+.asset-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); }
+.asset-row:last-child { border-bottom: none; }
+.asset-label { font-size: 13px; color: var(--t2); }
+.asset-val { font-size: 13px; font-weight: 600; color: var(--t1); }
+
+.next-action-banner {
+  margin-top: 20px;
+  background: rgba(99,102,241,0.08);
+  border: 1px solid rgba(99,102,241,0.28);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: flex; align-items: flex-start; gap: 14px;
+}
+.na-icon {
+  width: 32px; height: 32px; background: rgba(99,102,241,0.18); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px;
+}
+.na-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--a3); font-weight: 600; margin-bottom: 4px; }
+.na-text { font-size: 14px; color: var(--t1); line-height: 1.5; }
+
+/* ── PAGE: FAILURE MAP ───────────────────────────────────────────────── */
+.fm-kpi-row {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 14px; margin-bottom: 20px;
+}
+.fm-kpi {
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 18px;
+  position: relative; overflow: hidden;
+}
+.fm-kpi::before {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+  background: var(--kpi-color, var(--grad));
+}
+.fm-kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--t3); margin-bottom: 6px; }
+.fm-kpi-val { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+.fm-kpi-detail { font-size: 12px; color: var(--t2); margin-top: 3px; }
+
+.fm-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+
+.breakdown-tabs { display: flex; gap: 2px; margin-bottom: 12px; }
+.btab {
+  padding: 5px 12px; border-radius: 6px; font-size: 12px; color: var(--t3);
+  cursor: pointer; transition: all 0.15s;
+}
+.btab.active { background: rgba(99,102,241,0.14); color: var(--a3); font-weight: 500; }
+.btab:hover:not(.active) { color: var(--t2); }
+
+.bar-item { margin-bottom: 10px; }
+.bar-label-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12.5px; }
+.bar-label-name { color: var(--t2); }
+.bar-label-pct { font-weight: 600; }
+.bar-track { height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+
+.root-cause-list { list-style: none; }
+.root-cause-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.root-cause-item:last-child { border-bottom: none; }
+.rci-num { width: 20px; height: 20px; border-radius: 50%; background: var(--grad); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.rci-text { color: var(--t2); line-height: 1.5; }
+
+.cluster-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+.cluster-card {
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px;
+  transition: all 0.2s; cursor: pointer;
+}
+.cluster-card:hover { border-color: var(--border-hi); }
+.cluster-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cluster-id {
+  width: 24px; height: 24px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.cluster-name { font-size: 13px; font-weight: 500; }
+.cluster-pct { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.cluster-count { font-size: 11px; color: var(--t2); margin-top: 2px; }
+.cluster-bar { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+.cluster-bar-fill { height: 100%; border-radius: 2px; }
+
+.episode-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+.episode-card {
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px;
+  font-size: 12px;
+}
+.episode-thumb {
+  width: 100%; aspect-ratio: 16/9;
+  background: linear-gradient(135deg, #0f0f1a, #1a1030);
+  border-radius: 6px; margin-bottom: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--t3); font-size: 11px;
+  border: 1px solid var(--border);
+  position: relative; overflow: hidden;
+}
+.episode-thumb::after {
+  content: '▶'; position: absolute;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(99,102,241,0.45);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: white;
+}
+.episode-label { font-weight: 500; margin-bottom: 2px; }
+.episode-meta { color: var(--t3); font-size: 11px; }
+
+.diagnosis-card {
+  background: rgba(244,63,94,0.06);
+  border: 1px solid rgba(244,63,94,0.2);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+}
+.diag-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--red); font-weight: 600; margin-bottom: 8px; }
+.diag-text { font-size: 13.5px; color: var(--t2); line-height: 1.65; }
+
+/* ── PAGE: PATCH PLAN ────────────────────────────────────────────────── */
+.gap-list { list-style: none; }
+.gap-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 7px 0; border-bottom: 1px solid var(--border);
+  font-size: 13px; color: var(--t2);
+}
+.gap-item:last-child { border-bottom: none; }
+.gap-bullet { color: var(--red); flex-shrink: 0; margin-top: 2px; }
+
+.patch-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 20px 0; }
+.patch-col { background: var(--surf); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.patch-col-icon { font-size: 20px; margin-bottom: 10px; }
+.patch-col-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--t3); margin-bottom: 12px; }
+.patch-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.patch-item:last-child { border-bottom: none; }
+.patch-item-label { color: var(--t3); }
+.patch-item-val { font-weight: 500; color: var(--t1); }
+
+.recipe-card {
+  background: rgba(6,182,212,0.06);
+  border: 1px solid rgba(6,182,212,0.2);
+  border-radius: var(--radius);
+  padding: 18px 20px; margin-bottom: 16px;
+}
+.recipe-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cyan); font-weight: 600; margin-bottom: 12px; }
+.recipe-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.recipe-pill {
+  padding: 4px 10px; border-radius: 99px; font-size: 11.5px; font-weight: 500;
+  background: rgba(6,182,212,0.1); color: var(--cyan);
+  border: 1px solid rgba(6,182,212,0.2);
+}
+
+.uplift-banner {
+  background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25);
+  border-radius: var(--radius); padding: 18px 24px;
+  display: flex; align-items: center; gap: 32px;
+}
+.uplift-item { text-align: center; }
+.uplift-val { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+.uplift-label { font-size: 11px; color: var(--t3); margin-top: 3px; }
+
+/* ── PAGE: ITERATION RUNNER ──────────────────────────────────────────── */
+.runner-timeline {
+  display: flex; align-items: center;
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 24px;
+  margin-bottom: 20px; gap: 0;
+}
+.rt-step { display: flex; flex-direction: column; align-items: center; flex: 1; position: relative; }
+.rt-step:not(:last-child)::after {
+  content: ''; position: absolute;
+  top: 16px; left: calc(50% + 20px); right: calc(-50% + 20px);
+  height: 2px; background: var(--border);
+  z-index: 0;
+}
+.rt-step.active:not(:last-child)::after { background: var(--a1); }
+.rt-step.done:not(:last-child)::after { background: var(--green); }
+.rt-dot {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--bg); display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; z-index: 1; flex-shrink: 0;
+  transition: all 0.3s;
+}
+.rt-step.active .rt-dot {
+  border-color: var(--a1); background: rgba(99,102,241,0.15);
+  color: var(--a3);
+  box-shadow: 0 0 12px rgba(99,102,241,0.4);
+  animation: dotPulse 1.5s infinite;
+}
+.rt-step.done .rt-dot { border-color: var(--green); background: var(--green-dim); color: var(--green); }
+@keyframes dotPulse { 0%,100%{ box-shadow: 0 0 12px rgba(99,102,241,0.4); } 50%{ box-shadow: 0 0 22px rgba(99,102,241,0.7); } }
+.rt-label { font-size: 11px; color: var(--t2); margin-top: 8px; text-align: center; max-width: 80px; }
+.rt-step.active .rt-label { color: var(--t1); font-weight: 500; }
+.rt-step.done .rt-label { color: var(--green); }
+
+.runner-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.status-list { list-style: none; }
+.status-item { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.status-item:last-child { border-bottom: none; }
+.si-label { color: var(--t3); }
+.si-val { font-weight: 500; }
+.si-running { color: var(--a3); }
+.si-done    { color: var(--green); }
+.si-idle    { color: var(--t3); }
+
+.artifact-list { list-style: none; }
+.artifact-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px;
+}
+.artifact-item:last-child { border-bottom: none; }
+.artifact-icon { color: var(--a3); font-size: 13px; flex-shrink: 0; }
+.artifact-name { color: var(--t2); }
+.artifact-size { color: var(--t3); margin-left: auto; font-size: 11px; }
+
+.console-wrap {
+  background: #050508; border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px;
+  height: 220px; overflow-y: auto; font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; line-height: 1.7;
+  scrollbar-width: thin; scrollbar-color: var(--t4) transparent;
+}
+.console-wrap::-webkit-scrollbar { width: 3px; }
+.console-wrap::-webkit-scrollbar-thumb { background: var(--t4); }
+.log-line { color: var(--t3); }
+.log-line.active { color: var(--t1); }
+.log-line.success { color: var(--green); }
+.log-line.warn    { color: var(--yellow); }
+.log-ts { color: var(--t3); margin-right: 8px; }
+.log-key { color: var(--a3); }
+
+/* ── PAGE: IMPROVEMENT REPORT ────────────────────────────────────────── */
+.report-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+
+.before-after-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+.ba-card {
+  background: var(--surf); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px;
+}
+.ba-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--t3); margin-bottom: 12px; }
+.ba-row { display: flex; align-items: baseline; gap: 8px; }
+.ba-before { font-size: 20px; font-weight: 600; color: var(--t3); }
+.ba-arrow { color: var(--t3); font-size: 14px; }
+.ba-after { font-size: 32px; font-weight: 700; letter-spacing: -0.8px; }
+.ba-delta { font-size: 13px; font-weight: 600; margin-top: 4px; }
+.ba-good { color: var(--green); }
+.ba-bad  { color: var(--red); }
+
+.changes-list { list-style: none; }
+.change-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13.5px;
+}
+.change-item:last-child { border-bottom: none; }
+.change-check { color: var(--green); flex-shrink: 0; margin-top: 1px; }
+
+.assets-created { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.asset-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 99px;
+  font-size: 12px; font-weight: 500;
+  border: 1px solid;
+}
+.asset-chip.recipe   { background: rgba(6,182,212,0.08); color: var(--cyan);   border-color: rgba(6,182,212,0.25); }
+.asset-chip.template { background: rgba(99,102,241,0.08); color: var(--a3);   border-color: rgba(99,102,241,0.25); }
+.asset-chip.failure  { background: rgba(244,63,94,0.08);  color: var(--red);  border-color: rgba(244,63,94,0.2); }
+
+.next-iter-banner {
+  margin-top: 20px;
+  background: rgba(16,185,129,0.07);
+  border: 1px solid rgba(16,185,129,0.22);
+  border-radius: var(--radius); padding: 16px 20px;
+  display: flex; align-items: center; gap: 14px;
+}
+.ni-icon { font-size: 20px; }
+.ni-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--green); font-weight: 600; margin-bottom: 4px; }
+.ni-text { font-size: 14px; color: var(--t1); }
+
+/* ── PAGE: PLATFORM MEMORY ───────────────────────────────────────────── */
+.memory-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+.mem-col { background: var(--surf); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.mem-col-icon { font-size: 18px; margin-bottom: 10px; }
+.mem-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 7px;
+  font-size: 13px; margin-bottom: 4px;
+  background: var(--surf-hi); border: 1px solid var(--border);
+  cursor: pointer; transition: all 0.15s;
+}
+.mem-item:hover { border-color: var(--border-hi); }
+.mem-item-icon { font-size: 13px; flex-shrink: 0; }
+.mem-item-name { font-weight: 500; font-size: 12.5px; }
+.mem-item-sub  { font-size: 11px; color: var(--t3); }
+.mem-use { margin-left: auto; font-size: 10px; color: var(--t3); }
+
+.reuse-banner {
+  background: rgba(16,185,129,0.07);
+  border: 1px solid rgba(16,185,129,0.2);
+  border-radius: var(--radius); padding: 14px 20px;
+  display: flex; align-items: center; gap: 14px;
+  font-size: 13.5px; color: var(--t2);
+  margin-bottom: 20px;
+}
+.reuse-icon { font-size: 22px; }
+.reuse-text strong { color: var(--t1); }
+
+.platform-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.ps-card { background: var(--surf); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; text-align: center; }
+.ps-val { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+.ps-label { font-size: 11px; color: var(--t3); margin-top: 4px; }
+
+/* ── Scrollbar in console ────────────────────────────────────────────── */
+.console-wrap { scroll-behavior: smooth; }
+
+/* ── Responsive (basic) ──────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .home-hero { grid-template-columns: 1fr; }
+  .loop-wrapper { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-layer">
+  <div class="bg-dot-grid"></div>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+</div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">N</div>
+      <div>
+        <div class="logo-text">Nvex</div>
+        <div class="logo-sub">Physical AI Orchestration</div>
+      </div>
+    </div>
+
+    <div class="nav-section-label">Navigation</div>
+
+    <div class="nav-item" data-page="home">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M2 6.5L8 2l6 4.5V14H2V6.5z"/>
+      </svg>
+      Project Hub
+    </div>
+    <div class="nav-item" data-page="overview">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="2" y="2" width="5" height="5" rx="1"/>
+        <rect x="9" y="2" width="5" height="5" rx="1"/>
+        <rect x="2" y="9" width="5" height="5" rx="1"/>
+        <rect x="9" y="9" width="5" height="5" rx="1"/>
+      </svg>
+      Project Overview
+    </div>
+    <div class="nav-item" data-page="failure">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="8" cy="8" r="6"/>
+        <path d="M8 5v3.5l2 2"/>
+      </svg>
+      Failure Map
+      <span class="nav-badge">4</span>
+    </div>
+    <div class="nav-item" data-page="patch">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M3 8h10M8 3v10"/>
+        <circle cx="8" cy="8" r="6"/>
+      </svg>
+      Patch Plan
+    </div>
+    <div class="nav-item" data-page="runner">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <polygon points="4,3 13,8 4,13"/>
+      </svg>
+      Iteration Runner
+    </div>
+    <div class="nav-item" data-page="report">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <polyline points="2,12 5,7 8,9 11,5 14,8"/>
+      </svg>
+      Improvement Report
+    </div>
+    <div class="nav-item" data-page="memory">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <ellipse cx="8" cy="5" rx="6" ry="3"/>
+        <path d="M2 5v6a6 3 0 0 0 12 0V5"/>
+        <path d="M2 8a6 3 0 0 0 12 0"/>
+      </svg>
+      Platform Memory
+    </div>
+
+    <div style="margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border);">
+      <div class="nav-section-label" style="padding-top: 4px;">Active Project</div>
+      <div class="sidebar-project" data-page="overview">
+        <div class="project-dot"></div>
+        <div>
+          <div class="project-name">LIBERO Kitchen</div>
+          <div class="project-sub">ckpt_v0.7 · 62% SR</div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main area -->
+  <div class="main">
+    <header class="topbar" id="topbar">
+      <div class="topbar-breadcrumb" id="breadcrumb">
+        <span>Nvex</span>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-cur" id="breadcrumb-cur">Project Hub</span>
+      </div>
+      <div class="topbar-spacer"></div>
+      <button class="btn btn-ghost" onclick="navigate('failure')">View Failure Map</button>
+      <button class="btn btn-primary" onclick="navigate('runner')">▶ Run Iteration</button>
+    </header>
+    <div class="content" id="content">
+      <!-- Rendered by JS -->
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════
+   APP DATA
+══════════════════════════════════════════════════════════════════════ */
+const D = {
+  project: {
+    name: "LIBERO Kitchen Pick-and-Place",
+    checkpoint: "ckpt_v0.7",
+    domain: "tabletop manipulation",
+    suite: "LIBERO goal + robustness subset",
+    status: "Underperforming",
+    statusNote: "occlusion + camera shift failures",
+    kpi: { successRate: 62, failClusters: 4, topRisk: "Perception gap", confidence: 0.81 },
+    assets: { runs: 3, recipes: 2, templates: 1 },
+    nextAction: "Patch occlusion/perception gap with targeted multimodal data + continual learning update",
+  },
+  clusters: [
+    { id:"A", label:"Visual Occlusion",    count:47, pct:38, color:"#f43f5e", sev:"critical" },
+    { id:"B", label:"Temporal Planning",   count:31, pct:25, color:"#f97316", sev:"high"     },
+    { id:"C", label:"Recovery Missing",    count:22, pct:18, color:"#f59e0b", sev:"medium"   },
+    { id:"D", label:"Env Mismatch",        count:14, pct:11, color:"#6366f1", sev:"low"      },
+  ],
+  rootCauses: [
+    "Visual occlusion under cluttered table surface — grasp fails after partial obstruction",
+    "Weak temporal correction after initial grasp misalignment",
+    "Insufficient recovery trajectory data — model abandons task after first failure",
+    "Camera shift generalization gap exposed by LIBERO-plus robustness subset",
+  ],
+  taskBreakdown: [
+    { name:"libero_spatial",  pct:45, color:"#f43f5e" },
+    { name:"libero_object",   pct:71, color:"#f59e0b" },
+    { name:"libero_goal",     pct:62, color:"#6366f1" },
+    { name:"libero_10",       pct:44, color:"#f97316" },
+  ],
+  patchPlan: {
+    gaps: [
+      "Occlusion-heavy scenes underrepresented in training corpus",
+      "Recovery trajectories absent — model cannot self-correct after first miss",
+      "Verification coverage incomplete for LIBERO-plus robustness suite",
+    ],
+    data:     { episodes:120, corrections:40, variants:1, modality:"RGB + depth + action traces", ratio:"70% targeted real / 30% simulated" },
+    training: { strategy:"Continual Learning", note:"frozen base policy", duration:"~45 min", cost:"low" },
+    verify:   { suite:"LIBERO-plus robustness subset", env:"occlusion env replay", gate:"checkpoint gating" },
+    uplift:   { lo:8, hi:12, confidence:0.73, runtime:45 },
+  },
+  report: {
+    before: { success:62, clusters:4, recovery:31 },
+    after:  { success:74, clusters:2, recovery:55 },
+    changes: [
+      "Added 120 occlusion-heavy patch episodes targeting visual obstruction failures",
+      "Improved recovery behavior via CL update with 40 teleop-correction trajectories",
+      "Expanded verification coverage with full LIBERO-plus robustness subset evaluation",
+    ],
+    assets: [
+      { type:"recipe",   name:"occlusion_recovery_v1"       },
+      { type:"template", name:"clutter_pick_patch_pipeline"  },
+      { type:"failure",  name:"grasp_after_occlusion_miss"   },
+    ],
+    nextIter: "Target temporal planning gap under language instruction variation",
+  },
+  memory: {
+    recipes:  ["occlusion_recovery_v1","recovery_behavior_v2","tactile_sync_v1","camera_shift_patch_v1","lang_var_augment_v1","depth_fusion_v1"],
+    templates:["libero_patch_pipeline","teleop_correction_flow","multimodal_eval_stack"],
+    failures: ["perception gap","recovery missing","env mismatch","temporal planning","language variation","depth misread"],
+    stats:    { recipes:6, templates:3, patterns:6, projects:3 },
+  },
+};
+
+/* ══════════════════════════════════════════════════════════════════════
+   PAGE RENDERERS
+══════════════════════════════════════════════════════════════════════ */
+
+function renderHome() {
+  return `
+<div class="page-enter">
+  <div class="home-hero">
+    <div>
+      <div class="home-tagline">Turn Failures Into<br>Better Checkpoints</div>
+      <div class="home-sub">
+        Nvex is the orchestration layer between your Physical AI policy and its next iteration.
+        It reads failures, plans targeted fixes, and drives your runtime to a measurable improvement.
+      </div>
+      <div class="home-stats">
+        <div>
+          <div class="home-stat-val" style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">4</div>
+          <div class="home-stat-label">Active projects</div>
+        </div>
+        <div>
+          <div class="home-stat-val">3</div>
+          <div class="home-stat-label">Iterations run</div>
+        </div>
+        <div>
+          <div class="home-stat-val" style="color:var(--green)">+12pp</div>
+          <div class="home-stat-label">Avg success uplift</div>
+        </div>
+        <div>
+          <div class="home-stat-val">12</div>
+          <div class="home-stat-label">Platform assets</div>
+        </div>
+      </div>
+      <div class="home-cards-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🔍</div>
+          <div class="feature-name">Failure Intelligence</div>
+          <div class="feature-desc">Reads eval artifacts, clusters failure modes, surfaces root-cause hypotheses.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔄</div>
+          <div class="feature-name">Closed Loop</div>
+          <div class="feature-desc">Eval → gap analysis → data patch → post-training → re-eval. Automatically.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <div class="feature-name">Orchestration</div>
+          <div class="feature-desc">Drives AlphaBrain runtime jobs from a single structured patch plan.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📐</div>
+          <div class="feature-name">Compounding Assets</div>
+          <div class="feature-desc">Every project deposits recipes, templates, and failure patterns into platform memory.</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="loop-wrapper">
+        <div class="loop-title">The Intelligence Loop</div>
+        ${renderLoopSVG()}
+      </div>
+      <div class="project-preview" style="margin-top:14px" onclick="navigate('overview')">
+        <div class="pp-header">
+          <div class="pp-icon">🤖</div>
+          <div>
+            <div class="pp-name">${D.project.name}</div>
+            <div class="pp-meta">${D.project.domain} · 2h ago</div>
+          </div>
+          <div style="margin-left:auto"><span class="badge badge-red"><span class="badge-dot"></span>Underperforming</span></div>
+        </div>
+        <div class="pp-kpi">
+          <div class="pp-kpi-item">
+            <div class="pp-kpi-val">62%</div>
+            <div>success rate</div>
+          </div>
+          <div class="pp-kpi-item">
+            <div class="pp-kpi-val">4</div>
+            <div>fail clusters</div>
+          </div>
+          <div class="pp-kpi-item">
+            <div class="pp-kpi-val">0.81</div>
+            <div>gap confidence</div>
+          </div>
+        </div>
+        <div class="pp-action"><strong>Nvex recommends:</strong> ${D.project.nextAction}</div>
+      </div>
+    </div>
+  </div>
+</div>`;
+}
+
+function renderLoopSVG() {
+  const cx = 180, cy = 170, r = 120;
+  const nodes = [
+    { angle:-90, label:"Eval",        color:"#6366f1" },
+    { angle:-30, label:"Gap Analysis",color:"#8b5cf6" },
+    { angle: 30, label:"Data Target", color:"#a78bfa" },
+    { angle: 90, label:"Post-Train",  color:"#8b5cf6" },
+    { angle:150, label:"Collection",  color:"#6366f1" },
+    { angle:210, label:"Checkpoint",  color:"#10b981" },
+  ];
+  const pts = nodes.map(n => {
+    const a = n.angle * Math.PI / 180;
+    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a), ...n };
+  });
+
+  const pathStr = pts.map((p, i) => `${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') + ' Z';
+
+  let svgNodes = pts.map(p => `
+    <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="28" fill="${p.color}22" stroke="${p.color}" stroke-width="1.5"/>
+    <text x="${p.x.toFixed(1)}" y="${(p.y+4).toFixed(1)}" text-anchor="middle" fill="${p.color}" font-size="8.5" font-family="Inter" font-weight="600">${p.label}</text>
+  `).join('');
+
+  return `<svg viewBox="0 0 360 340" width="340" height="320" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="ah" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="5" markerHeight="5" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#6366f1" opacity="0.8"/>
+      </marker>
+    </defs>
+    <!-- Loop path -->
+    <path d="${pathStr}" fill="none" stroke="url(#lgrad)" stroke-width="1.5" stroke-dasharray="8 4" opacity="0.5" marker-end="url(#ah)"/>
+    <defs>
+      <linearGradient id="lgrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#6366f1"/>
+        <stop offset="100%" stop-color="#10b981"/>
+      </linearGradient>
+    </defs>
+    <!-- Center -->
+    <circle cx="${cx}" cy="${cy}" r="36" fill="rgba(99,102,241,0.08)" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="${cx}" y="${cy-5}" text-anchor="middle" fill="#818cf8" font-size="13" font-family="Inter" font-weight="700">NVEX</text>
+    <text x="${cx}" y="${cy+10}" text-anchor="middle" fill="#6366f1" font-size="8" font-family="Inter">orchestrates</text>
+    <!-- Nodes -->
+    ${svgNodes}
+    <!-- Animated dot -->
+    <circle r="4" fill="#a78bfa" opacity="0.9">
+      <animateMotion dur="4s" repeatCount="indefinite" rotate="auto">
+        <mpath href="#loopPath"/>
+      </animateMotion>
+    </circle>
+    <path id="loopPath" d="${pathStr}" fill="none" visibility="hidden"/>
+  </svg>`;
+}
+
+function renderOverview() {
+  return `
+<div class="page-enter">
+  <div class="overview-header">
+    <div>
+      <div class="page-title">${D.project.name}</div>
+      <div class="page-subtitle" style="margin-top:6px;display:flex;align-items:center;gap:8px">
+        <span class="status-chip"><span class="status-dot"></span>${D.project.status}</span>
+        <span style="color:var(--t3);font-size:13px">${D.project.statusNote}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" onclick="navigate('failure')">View Failure Map</button>
+      <button class="btn btn-primary" onclick="navigate('patch')">Generate Patch Plan →</button>
+    </div>
+  </div>
+
+  <div class="checkpoint-row">
+    <div class="checkpoint-item">
+      <div class="ci-label">Checkpoint</div>
+      <div class="ci-value">${D.project.checkpoint}</div>
+    </div>
+    <div class="checkpoint-sep"></div>
+    <div class="checkpoint-item">
+      <div class="ci-label">Domain</div>
+      <div class="ci-value">${D.project.domain}</div>
+    </div>
+    <div class="checkpoint-sep"></div>
+    <div class="checkpoint-item">
+      <div class="ci-label">Eval Suite</div>
+      <div class="ci-value">${D.project.suite}</div>
+    </div>
+    <div class="checkpoint-sep"></div>
+    <div class="checkpoint-item">
+      <div class="ci-label">Last Run</div>
+      <div class="ci-value">2 hours ago</div>
+    </div>
+    <div class="checkpoint-sep"></div>
+    <div class="checkpoint-item">
+      <div class="ci-label">Gap Confidence</div>
+      <div class="ci-value" style="color:var(--a3)">${D.project.kpi.confidence}</div>
+    </div>
+  </div>
+
+  <div class="card-grid-3" style="margin-bottom:14px">
+    <div class="card" style="border-color:rgba(244,63,94,0.25)">
+      <div class="kpi-accent-line" style="background:var(--red)"></div>
+      <div class="card-title">Overall Success Rate</div>
+      <div class="kpi-card-val" style="color:var(--red)">${D.project.kpi.successRate}%</div>
+      <div class="kpi-card-sub">vs. 82% target · −20pp gap</div>
+      <div class="kpi-card-risk" style="margin-top:10px">
+        <div class="bar-track"><div class="bar-fill" style="width:${D.project.kpi.successRate}%;background:var(--red)"></div></div>
+      </div>
+    </div>
+    <div class="card" style="border-color:rgba(245,158,11,0.25)">
+      <div class="kpi-accent-line" style="background:var(--yellow)"></div>
+      <div class="card-title">Failure Clusters</div>
+      <div class="kpi-card-val" style="color:var(--yellow)">${D.project.kpi.failClusters}</div>
+      <div class="kpi-card-sub">distinct failure modes identified</div>
+      <div class="kpi-card-risk" style="margin-top:10px">
+        ${D.clusters.map(c=>`<span style="display:inline-block;width:${c.pct*0.7}px;height:6px;background:${c.color};border-radius:3px;margin-right:2px" title="${c.label} ${c.pct}%"></span>`).join('')}
+      </div>
+    </div>
+    <div class="card" style="border-color:rgba(99,102,241,0.3)">
+      <div class="kpi-accent-line" style="background:var(--a1)"></div>
+      <div class="card-title">Top Risk</div>
+      <div class="kpi-card-val" style="font-size:20px;color:var(--a3)">${D.project.kpi.topRisk}</div>
+      <div class="kpi-card-sub">38% of failures trace to occlusion scenarios</div>
+      <div class="kpi-card-risk" style="margin-top:10px">
+        <span class="badge badge-red">Critical · Cluster A</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 260px;gap:14px">
+    <div>
+      <div class="section-title">Failure Distribution</div>
+      <div class="card">
+        ${D.clusters.map(c=>`
+          <div class="bar-item">
+            <div class="bar-label-row">
+              <span class="bar-label-name">Cluster ${c.id}: ${c.label}</span>
+              <span class="bar-label-pct" style="color:${c.color}">${c.pct}%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${c.pct}%;background:${c.color}"></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <div>
+      <div class="section-title">Available Assets</div>
+      <div class="assets-panel">
+        <div class="asset-row"><span class="asset-label">Prior runs</span><span class="asset-val">${D.project.assets.runs}</span></div>
+        <div class="asset-row"><span class="asset-label">Data recipes</span><span class="asset-val">${D.project.assets.recipes}</span></div>
+        <div class="asset-row"><span class="asset-label">Pipeline templates</span><span class="asset-val">${D.project.assets.templates}</span></div>
+        <div class="asset-row"><span class="asset-label">Failure patterns</span><span class="asset-val">4</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="next-action-banner">
+    <div class="na-icon">🎯</div>
+    <div>
+      <div class="na-label">Nvex Recommendation</div>
+      <div class="na-text">${D.project.nextAction}</div>
+    </div>
+    <button class="btn btn-primary" style="margin-left:auto;flex-shrink:0" onclick="navigate('patch')">View Patch Plan →</button>
+  </div>
+</div>`;
+}
+
+function renderFailureMap() {
+  return `
+<div class="page-enter">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div class="page-title">Failure Map</div>
+      <div class="page-subtitle">Cluster analysis · ${D.project.checkpoint} · LIBERO robustness suite</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost">Export</button>
+      <button class="btn btn-primary" onclick="navigate('patch')">Generate Patch Plan →</button>
+    </div>
+  </div>
+
+  <div class="fm-kpi-row">
+    <div class="fm-kpi" style="--kpi-color:var(--red)">
+      <div class="fm-kpi-label">Overall Success Rate</div>
+      <div class="fm-kpi-val" style="color:var(--red)">62%</div>
+      <div class="fm-kpi-detail">−20pp below target · 124 episodes evaluated</div>
+    </div>
+    <div class="fm-kpi" style="--kpi-color:var(--orange)">
+      <div class="fm-kpi-label">Top Failure Cluster</div>
+      <div class="fm-kpi-val" style="color:var(--orange)">Occlusion</div>
+      <div class="fm-kpi-detail">38% of all failures · Cluster A · 47 episodes</div>
+    </div>
+    <div class="fm-kpi" style="--kpi-color:var(--a1)">
+      <div class="fm-kpi-label">Gap Confidence</div>
+      <div class="fm-kpi-val" style="color:var(--a3)">0.81</div>
+      <div class="fm-kpi-detail">High certainty on primary root cause</div>
+    </div>
+  </div>
+
+  <div class="fm-two-col">
+    <div class="card">
+      <div class="breakdown-tabs">
+        <div class="btab active">By task</div>
+        <div class="btab">By scene</div>
+        <div class="btab">By modality</div>
+      </div>
+      ${D.taskBreakdown.map(t=>`
+        <div class="bar-item">
+          <div class="bar-label-row">
+            <span class="bar-label-name">${t.name}</span>
+            <span class="bar-label-pct" style="color:${t.pct<60?'var(--red)':t.pct<70?'var(--yellow)':'var(--green)'}">${t.pct}%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width:${t.pct}%;background:${t.color}"></div></div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-bottom:8px">Root-Cause Hypotheses</div>
+      <ul class="root-cause-list">
+        ${D.rootCauses.map((rc, i)=>`
+          <li class="root-cause-item">
+            <div class="rci-num">${i+1}</div>
+            <div class="rci-text">${rc}</div>
+          </li>
+        `).join('')}
+      </ul>
+    </div>
+  </div>
+
+  <div class="section-title">Failure Clusters</div>
+  <div class="cluster-grid">
+    ${D.clusters.map(c=>`
+      <div class="cluster-card">
+        <div class="cluster-header">
+          <div class="cluster-id" style="background:${c.color}22;color:${c.color}">
+            ${c.id}
+          </div>
+          <div class="cluster-name">${c.label}</div>
+          <div style="margin-left:auto"><span class="badge" style="background:${c.color}18;color:${c.color}">${c.sev}</span></div>
+        </div>
+        <div class="cluster-pct" style="color:${c.color}">${c.pct}%</div>
+        <div class="cluster-count">${c.count} failure episodes · ${Math.round(c.pct*124/100)} of 124 eval runs</div>
+        <div class="cluster-bar"><div class="cluster-bar-fill" style="width:${c.pct}%;background:${c.color}"></div></div>
+      </div>
+    `).join('')}
+  </div>
+
+  <div class="section-title">Representative Episodes</div>
+  <div class="episode-grid">
+    <div class="episode-card">
+      <div class="episode-thumb" style="font-size:0"></div>
+      <div class="episode-label">Occlusion fail · ep_0042</div>
+      <div class="episode-meta">Cluster A · 2.1s failure · spatial task</div>
+    </div>
+    <div class="episode-card">
+      <div class="episode-thumb" style="font-size:0"></div>
+      <div class="episode-label">Recovery miss · ep_0091</div>
+      <div class="episode-meta">Cluster C · 4.7s failure · goal task</div>
+    </div>
+    <div class="episode-card">
+      <div class="episode-thumb" style="font-size:0"></div>
+      <div class="episode-label">Camera shift · ep_0134</div>
+      <div class="episode-meta">Cluster D · 1.8s failure · robustness</div>
+    </div>
+  </div>
+
+  <div class="diagnosis-card">
+    <div class="diag-label">Nvex Diagnosis</div>
+    <div class="diag-text">
+      Model fails predominantly after grasp misalignment when the target object is partially occluded by adjacent items on the table surface.
+      Secondary failure pattern involves absence of recovery behavior: after a missed grasp, the policy fails to re-plan and completes the episode
+      without the object. A third, smaller cluster traces to camera-angle variation in the LIBERO-plus robustness subset, suggesting insufficient
+      viewpoint augmentation during training.
+    </div>
+  </div>
+</div>`;
+}
+
+function renderPatchPlan() {
+  const pp = D.patchPlan;
+  return `
+<div class="page-enter">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div class="page-title">Patch Plan</div>
+      <div class="page-subtitle">Auto-generated from Failure Map · ${D.project.checkpoint}</div>
+    </div>
+    <button class="btn btn-primary" onclick="navigate('runner')">▶ Approve &amp; Run →</button>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="section-title">Gap Summary</div>
+    <ul class="gap-list">
+      ${pp.gaps.map(g=>`<li class="gap-item"><span class="gap-bullet">●</span>${g}</li>`).join('')}
+    </ul>
+  </div>
+
+  <div class="patch-cols">
+    <div class="patch-col">
+      <div class="patch-col-icon">📦</div>
+      <div class="patch-col-title">Data Targeting</div>
+      <div class="patch-item"><span class="patch-item-label">Patch episodes</span><span class="patch-item-val">${pp.data.episodes}</span></div>
+      <div class="patch-item"><span class="patch-item-label">Teleop corrections</span><span class="patch-item-val">${pp.data.corrections}</span></div>
+      <div class="patch-item"><span class="patch-item-label">Lighting variants</span><span class="patch-item-val">${pp.data.variants}</span></div>
+      <div class="patch-item"><span class="patch-item-label">Modality mix</span><span class="patch-item-val" style="font-size:11px">${pp.data.modality}</span></div>
+      <div class="patch-item"><span class="patch-item-label">Source ratio</span><span class="patch-item-val" style="font-size:11px">${pp.data.ratio}</span></div>
+    </div>
+    <div class="patch-col">
+      <div class="patch-col-icon">🧠</div>
+      <div class="patch-col-title">Training Strategy</div>
+      <div class="patch-item"><span class="patch-item-label">Algorithm</span><span class="patch-item-val" style="color:var(--a3)">${pp.training.strategy}</span></div>
+      <div class="patch-item"><span class="patch-item-label">Base policy</span><span class="patch-item-val">${pp.training.note}</span></div>
+      <div class="patch-item"><span class="patch-item-label">Est. runtime</span><span class="patch-item-val">${pp.training.duration}</span></div>
+      <div class="patch-item"><span class="patch-item-label">GPU cost</span><span class="patch-item-val" style="color:var(--green)">${pp.training.cost}</span></div>
+      <div class="patch-item"><span class="patch-item-label">Framework</span><span class="patch-item-val">AlphaBrain CL</span></div>
+    </div>
+    <div class="patch-col">
+      <div class="patch-col-icon">✅</div>
+      <div class="patch-col-title">Verification</div>
+      <div class="patch-item"><span class="patch-item-label">Eval suite</span><span class="patch-item-val" style="font-size:11px">${pp.verify.suite}</span></div>
+      <div class="patch-item"><span class="patch-item-label">Env replay</span><span class="patch-item-val" style="font-size:11px">${pp.verify.env}</span></div>
+      <div class="patch-item"><span class="patch-item-label">Gate policy</span><span class="patch-item-val">${pp.verify.gate}</span></div>
+      <div class="patch-item"><span class="patch-item-label">Min threshold</span><span class="patch-item-val">70% SR</span></div>
+      <div class="patch-item"><span class="patch-item-label">Comparison</span><span class="patch-item-val">before/after A/B</span></div>
+    </div>
+  </div>
+
+  <div class="recipe-card">
+    <div class="recipe-label">Data Recipe · occlusion_recovery_patch_v1</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:6px">MODALITY</div>
+        <div class="recipe-pills">
+          <span class="recipe-pill">RGB</span>
+          <span class="recipe-pill">Depth</span>
+          <span class="recipe-pill">Action traces</span>
+          <span class="recipe-pill">Recovery labels</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:6px">ANNOTATION</div>
+        <div class="recipe-pills">
+          <span class="recipe-pill">Fine-grained recovery</span>
+          <span class="recipe-pill">Occlusion mask</span>
+          <span class="recipe-pill">Grasp quality</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="uplift-banner">
+    <div class="uplift-item">
+      <div class="uplift-val" style="color:var(--green)">+${pp.uplift.lo}–${pp.uplift.hi}%</div>
+      <div class="uplift-label">Expected success uplift</div>
+    </div>
+    <div style="width:1px;height:48px;background:var(--border)"></div>
+    <div class="uplift-item">
+      <div class="uplift-val" style="color:var(--a3)">${pp.uplift.confidence}</div>
+      <div class="uplift-label">Confidence</div>
+    </div>
+    <div style="width:1px;height:48px;background:var(--border)"></div>
+    <div class="uplift-item">
+      <div class="uplift-val">${pp.uplift.runtime} min</div>
+      <div class="uplift-label">Estimated runtime</div>
+    </div>
+    <div style="width:1px;height:48px;background:var(--border)"></div>
+    <div class="uplift-item">
+      <div class="uplift-val" style="color:var(--green)">2×</div>
+      <div class="uplift-label">GPU requirement</div>
+    </div>
+    <button class="btn btn-primary" style="margin-left:auto" onclick="navigate('runner')">▶ Run This Plan</button>
+  </div>
+</div>`;
+}
+
+/* ── Iteration Runner state ──────────────────────────────────────────── */
+let runnerState = { step: 0, running: false, logLines: [], timer: null };
+const LOG_SCRIPT = [
+  { t:"00:00", text:"Initializing Nvex orchestration engine...", cls:"active" },
+  { t:"00:01", text:"Loading checkpoint ckpt_v0.7...", cls:"active" },
+  { t:"00:02", text:"Parsing patch plan: occlusion_recovery_patch_v1", cls:"active" },
+  { t:"00:03", text:"Targeting 120 occlusion episodes + 40 recovery traces", cls:"active" },
+  { t:"00:05", text:"Launching AlphaBrain continual learning job (2× A800)...", cls:"active" },
+  { t:"00:07", text:"Frozen base policy loaded — training action head only", cls:"active" },
+  { t:"00:11", key:"Training", text:"Step 100/500 · loss=0.342 · lr=1.0e-4", cls:"active" },
+  { t:"00:18", key:"Training", text:"Step 200/500 · loss=0.291 · lr=9.5e-5", cls:"active" },
+  { t:"00:25", key:"Training", text:"Step 300/500 · loss=0.244 · lr=8.8e-5", cls:"active" },
+  { t:"00:33", key:"Training", text:"Step 400/500 · loss=0.209 · lr=7.9e-5", cls:"active" },
+  { t:"00:41", key:"Training", text:"Step 500/500 · loss=0.187 · lr=6.6e-5", cls:"active" },
+  { t:"00:42", text:"Training complete. Saving checkpoint candidate ckpt_v0.8-pre...", cls:"active" },
+  { t:"00:43", text:"Launching re-evaluation on LIBERO-plus robustness subset...", cls:"active" },
+  { t:"00:47", key:"Eval", text:"Task libero_spatial: 71% success (↑26pp)", cls:"success" },
+  { t:"00:50", key:"Eval", text:"Task libero_goal: 76% success (↑14pp)", cls:"success" },
+  { t:"00:51", key:"Eval", text:"Task libero_10: 58% success (↑14pp)", cls:"success" },
+  { t:"00:52", text:"Overall success rate: 74.2% (+12.2pp over ckpt_v0.7)", cls:"success" },
+  { t:"00:53", text:"Failure clusters reduced: 4 → 2 (Cluster A -61%, Cluster C -72%)", cls:"success" },
+  { t:"00:54", text:"Checkpoint gating: PASS (74.2% ≥ 70% threshold)", cls:"success" },
+  { t:"00:54", text:"Saving ckpt_v0.8 and generating improvement report...", cls:"active" },
+  { t:"00:55", text:"✓ Iteration complete. Assets written to platform memory.", cls:"success" },
+];
+
+function renderRunner() {
+  const steps = [
+    { label:"Generate Patch Spec", done: runnerState.step > 0, active: runnerState.step === 0 && runnerState.running },
+    { label:"Launch Training",     done: runnerState.step > 1, active: runnerState.step === 1 },
+    { label:"Re-evaluate",         done: runnerState.step > 2, active: runnerState.step === 2 },
+    { label:"Generate Report",     done: runnerState.step > 3, active: runnerState.step === 3 },
+  ];
+
+  const isRunning = runnerState.running;
+  const isDone = runnerState.step >= 4;
+
+  const stepClass = (s) => s.done ? 'done' : s.active ? 'active' : '';
+  const stepIcon  = (s) => s.done ? '✓' : s.active ? '●' : (steps.indexOf(s)+1);
+
+  return `
+<div class="page-enter">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div class="page-title">Iteration Runner</div>
+      <div class="page-subtitle">AlphaBrain runtime · ${D.project.checkpoint} → ckpt_v0.8</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      ${isDone
+        ? `<button class="btn btn-primary" onclick="navigate('report')">View Report →</button>`
+        : isRunning
+        ? `<button class="btn btn-ghost" onclick="stopRunner()">■ Stop</button>`
+        : `<button class="btn btn-primary" onclick="startRunner()">▶ Run Iteration</button>`
+      }
+    </div>
+  </div>
+
+  <div class="runner-timeline">
+    ${steps.map(s=>`
+      <div class="rt-step ${stepClass(s)}">
+        <div class="rt-dot">${stepIcon(s)}</div>
+        <div class="rt-label">${s.label}</div>
+      </div>
+    `).join('')}
+  </div>
+
+  <div class="runner-cols">
+    <div class="card">
+      <div class="section-title">Runtime Status</div>
+      <ul class="status-list">
+        <li class="status-item">
+          <span class="si-label">AlphaBrain job</span>
+          <span class="si-val ${isDone?'si-done':isRunning?'si-running':'si-idle'}">
+            ${isDone?'✓ complete':isRunning?'● running':'idle'}
+          </span>
+        </li>
+        <li class="status-item">
+          <span class="si-label">Current stage</span>
+          <span class="si-val">
+            ${isDone?'report generated':isRunning?['patch spec','training','evaluation','report'][Math.min(runnerState.step,3)]:'—'}
+          </span>
+        </li>
+        <li class="status-item">
+          <span class="si-label">Progress</span>
+          <span class="si-val ${isDone?'si-done':''}">
+            ${isDone?'500/500 steps':isRunning?`${runnerState.logLines.length*3}/500 steps`:'—'}
+          </span>
+        </li>
+        <li class="status-item">
+          <span class="si-label">ETA</span>
+          <span class="si-val">
+            ${isDone?'done':isRunning?`~${Math.max(0,45-runnerState.logLines.length*2)} min`:'45 min est.'}
+          </span>
+        </li>
+        <li class="status-item">
+          <span class="si-label">GPUs</span>
+          <span class="si-val">2× A800</span>
+        </li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="section-title">Artifacts</div>
+      <ul class="artifact-list">
+        <li class="artifact-item"><span class="artifact-icon">📝</span><span class="artifact-name">patch_plan_20260425_v1.json</span><span class="artifact-size">4 KB</span></li>
+        <li class="artifact-item"><span class="artifact-icon">📊</span><span class="artifact-name" style="${!isRunning&&!isDone?'color:var(--t3)':''}">training_log_ckpt_v0.8.jsonl</span><span class="artifact-size">${isRunning||isDone?'18 KB':'—'}</span></li>
+        <li class="artifact-item"><span class="artifact-icon">🧪</span><span class="artifact-name" style="${runnerState.step<2&&!isDone?'color:var(--t3)':''}">eval_results_v0.8.json</span><span class="artifact-size">${runnerState.step>=2||isDone?'12 KB':'—'}</span></li>
+        <li class="artifact-item"><span class="artifact-icon">🎬</span><span class="artifact-name" style="${runnerState.step<2&&!isDone?'color:var(--t3)':''}">rollout_comparison.mp4</span><span class="artifact-size">${runnerState.step>=2||isDone?'240 MB':'—'}</span></li>
+        <li class="artifact-item"><span class="artifact-icon">💾</span><span class="artifact-name" style="${!isDone?'color:var(--t3)':''}">ckpt_v0.8/</span><span class="artifact-size">${isDone?'14 GB':'—'}</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+      <div style="width:8px;height:8px;border-radius:50%;background:${isDone?'var(--green)':isRunning?'var(--a1)':'var(--t3)'};${isRunning?'animation:pulse 1.2s infinite':''}"></div>
+      <span style="font-size:12px;font-weight:500;color:var(--t2)">Orchestration Console</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--t3)">${isDone?'finished':'waiting for input...'}</span>
+    </div>
+    <div class="console-wrap" id="console-wrap">
+      ${runnerState.logLines.map(l=>`<div class="log-line ${l.cls}"><span class="log-ts">[${l.t}]</span>${l.key?`<span class="log-key">${l.key}</span> `:''}${l.text}</div>`).join('')}
+      ${runnerState.logLines.length===0 ? '<div class="log-line">Waiting to start...</div>' : ''}
+    </div>
+  </div>
+</div>`;
+}
+
+function startRunner() {
+  runnerState.step = 0;
+  runnerState.running = true;
+  runnerState.logLines = [];
+  let i = 0;
+  runnerState.timer = setInterval(() => {
+    if (i >= LOG_SCRIPT.length) {
+      clearInterval(runnerState.timer);
+      runnerState.running = false;
+      runnerState.step = 4;
+      navigate('runner');
+      return;
+    }
+    runnerState.logLines.push(LOG_SCRIPT[i]);
+    const pct = i / LOG_SCRIPT.length;
+    runnerState.step = pct < 0.3 ? 0 : pct < 0.7 ? 1 : pct < 0.85 ? 2 : 3;
+    i++;
+    navigate('runner');
+    const cw = document.getElementById('console-wrap');
+    if (cw) cw.scrollTop = cw.scrollHeight;
+  }, 600);
+}
+
+function stopRunner() {
+  clearInterval(runnerState.timer);
+  runnerState.running = false;
+  navigate('runner');
+}
+
+function renderReport() {
+  const r = D.report;
+  return `
+<div class="page-enter">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px">
+    <div>
+      <div class="page-title">Improvement Report</div>
+      <div class="page-subtitle" style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <span class="badge badge-green"><span class="badge-dot"></span>Improvement verified</span>
+        <span style="color:var(--t3)">ckpt_v0.7 → ckpt_v0.8 · LIBERO-plus eval</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost">Share</button>
+      <button class="btn btn-primary" onclick="navigate('memory')">View Platform Memory →</button>
+    </div>
+  </div>
+
+  <div class="before-after-grid">
+    <div class="ba-card">
+      <div class="ba-label">Overall Success Rate</div>
+      <div class="ba-row">
+        <span class="ba-before">${r.before.success}%</span>
+        <span class="ba-arrow">→</span>
+        <span class="ba-after" style="color:var(--green)">${r.after.success}%</span>
+      </div>
+      <div class="ba-delta ba-good">↑ +${r.after.success-r.before.success}pp</div>
+      <div style="margin-top:10px;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">
+        <div style="width:${r.after.success}%;height:100%;background:var(--green);border-radius:3px"></div>
+      </div>
+    </div>
+    <div class="ba-card">
+      <div class="ba-label">Failure Clusters</div>
+      <div class="ba-row">
+        <span class="ba-before">${r.before.clusters}</span>
+        <span class="ba-arrow">→</span>
+        <span class="ba-after" style="color:var(--green)">${r.after.clusters}</span>
+      </div>
+      <div class="ba-delta ba-good">↓ −${r.before.clusters-r.after.clusters} clusters resolved</div>
+      <div style="margin-top:10px;display:flex;gap:3px">
+        ${[0,1,2,3].map(i=>`<div style="height:8px;flex:1;border-radius:2px;background:${i<r.after.clusters?'var(--orange)':'var(--green-dim)'}"></div>`).join('')}
+      </div>
+    </div>
+    <div class="ba-card">
+      <div class="ba-label">Recovery Success Rate</div>
+      <div class="ba-row">
+        <span class="ba-before">${r.before.recovery}%</span>
+        <span class="ba-arrow">→</span>
+        <span class="ba-after" style="color:var(--green)">${r.after.recovery}%</span>
+      </div>
+      <div class="ba-delta ba-good">↑ +${r.after.recovery-r.before.recovery}pp</div>
+      <div style="margin-top:10px;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">
+        <div style="width:${r.after.recovery}%;height:100%;background:var(--green);border-radius:3px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+    <div class="card">
+      <div class="section-title">What Changed</div>
+      <ul class="changes-list">
+        ${r.changes.map(c=>`<li class="change-item"><span class="change-check">✓</span>${c}</li>`).join('')}
+      </ul>
+    </div>
+    <div class="card">
+      <div class="section-title">Assets Created</div>
+      <div class="assets-created">
+        ${r.assets.map(a=>`<span class="asset-chip ${a.type}">
+          ${{recipe:'🧪',template:'📐',failure:'⚠️'}[a.type]} ${a.name}
+        </span>`).join('')}
+      </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <div class="section-title">Reused From Memory</div>
+        <div class="assets-created">
+          <span class="asset-chip recipe">🧪 occlusion_v1 (prior)</span>
+          <span class="asset-chip template">📐 libero_patch_pipeline</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:var(--surf);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px">
+    <div class="section-title">Checkpoint Comparison</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:4px">
+      ${D.clusters.map((c,i)=>{
+        const afterPct = i===0?15:i===1?18:i===2?5:8;
+        return `<div style="text-align:center">
+          <div style="font-size:11px;color:var(--t3);margin-bottom:6px">Cluster ${c.id}: ${c.label}</div>
+          <div style="font-size:13px;color:var(--t3)">Before: <b style="color:${c.color}">${c.pct}%</b></div>
+          <div style="font-size:13px;color:var(--t2)">After: <b style="color:var(--green)">${afterPct}%</b></div>
+          <div style="font-size:11px;color:var(--green);margin-top:2px">↓ −${c.pct-afterPct}pp</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+
+  <div class="next-iter-banner">
+    <div class="ni-icon">🔄</div>
+    <div>
+      <div class="ni-label">Recommended Next Iteration</div>
+      <div class="ni-text">${r.nextIter}</div>
+    </div>
+    <button class="btn btn-primary" style="margin-left:auto" onclick="navigate('patch')">Plan Next Patch →</button>
+  </div>
+</div>`;
+}
+
+function renderMemory() {
+  const m = D.memory;
+  return `
+<div class="page-enter">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div class="page-title">Platform Memory</div>
+      <div class="page-subtitle">Compounding assets across all projects — data recipes, pipeline templates, failure knowledge</div>
+    </div>
+    <button class="btn btn-ghost">Export Library</button>
+  </div>
+
+  <div class="reuse-banner">
+    <div class="reuse-icon">♻️</div>
+    <div class="reuse-text">This project <strong>reused 2 prior recipes</strong> and <strong>created 1 new pipeline template</strong>. Each project compounds our platform intelligence.</div>
+  </div>
+
+  <div class="memory-cols">
+    <div class="mem-col">
+      <div class="mem-col-icon">🧪</div>
+      <div class="section-title">Data Recipes</div>
+      ${m.recipes.map((r,i)=>`
+        <div class="mem-item">
+          <span class="mem-item-icon" style="color:var(--cyan)">◆</span>
+          <div>
+            <div class="mem-item-name">${r}</div>
+            <div class="mem-item-sub">Project ${['LIBERO','RoboCasa','LIBERO+','RoboCasa365','LIBERO','RoboCasa'][i]}</div>
+          </div>
+          <span class="mem-use">${[3,1,2,1,1,0][i]}× reused</span>
+        </div>
+      `).join('')}
+    </div>
+    <div class="mem-col">
+      <div class="mem-col-icon">📐</div>
+      <div class="section-title">Pipeline Templates</div>
+      ${m.templates.map((t,i)=>`
+        <div class="mem-item">
+          <span class="mem-item-icon" style="color:var(--a3)">◆</span>
+          <div>
+            <div class="mem-item-name">${t}</div>
+            <div class="mem-item-sub">${['Multi-task finetune','Correction collection','Full eval pipeline'][i]}</div>
+          </div>
+          <span class="mem-use">${[4,2,3][i]}× reused</span>
+        </div>
+      `).join('')}
+    </div>
+    <div class="mem-col">
+      <div class="mem-col-icon">⚠️</div>
+      <div class="section-title">Failure Ontology</div>
+      ${m.failures.map((f,i)=>`
+        <div class="mem-item">
+          <span class="mem-item-icon" style="color:${['#f43f5e','#f59e0b','#6366f1','#f97316','#8b5cf6','#06b6d4'][i]}">◆</span>
+          <div>
+            <div class="mem-item-name">${f}</div>
+            <div class="mem-item-sub">${[3,2,2,1,1,1][i]} projects</div>
+          </div>
+          <span class="mem-use">${[4,3,2,1,1,1][i]}× seen</span>
+        </div>
+      `).join('')}
+    </div>
+  </div>
+
+  <div class="section-title">Platform Totals</div>
+  <div class="platform-stats">
+    <div class="ps-card">
+      <div class="ps-val" style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">${m.stats.recipes}</div>
+      <div class="ps-label">Data recipes</div>
+    </div>
+    <div class="ps-card">
+      <div class="ps-val" style="color:var(--a3)">${m.stats.templates}</div>
+      <div class="ps-label">Pipeline templates</div>
+    </div>
+    <div class="ps-card">
+      <div class="ps-val" style="color:var(--cyan)">${m.stats.patterns}</div>
+      <div class="ps-label">Failure patterns</div>
+    </div>
+    <div class="ps-card">
+      <div class="ps-val" style="color:var(--green)">${m.stats.projects}</div>
+      <div class="ps-label">Projects contributing</div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px;background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.22);border-radius:var(--radius);padding:18px 20px">
+    <div class="section-title">Why This Matters</div>
+    <div style="font-size:14px;color:var(--t2);line-height:1.7">
+      Every iteration deposits assets here. The next project that encounters a visual occlusion failure starts from
+      <strong style="color:var(--t1)">occlusion_recovery_v1</strong> rather than from scratch.
+      The moat is not any single model — it is the accumulated intelligence of every fix, every recipe, every verified patch
+      that compounds into a platform other teams cannot replicate by running one-off experiments.
+    </div>
+  </div>
+</div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════════════════════════════ */
+const PAGE_META = {
+  home:     { label:"Project Hub",         breadcrumb:"Project Hub"        },
+  overview: { label:"Project Overview",    breadcrumb:"LIBERO Kitchen"     },
+  failure:  { label:"Failure Map",         breadcrumb:"Failure Map"        },
+  patch:    { label:"Patch Plan",          breadcrumb:"Patch Plan"         },
+  runner:   { label:"Iteration Runner",    breadcrumb:"Iteration Runner"   },
+  report:   { label:"Improvement Report", breadcrumb:"Improvement Report" },
+  memory:   { label:"Platform Memory",    breadcrumb:"Platform Memory"    },
+};
+const RENDERERS = {
+  home: renderHome, overview: renderOverview, failure: renderFailureMap,
+  patch: renderPatchPlan, runner: renderRunner, report: renderReport, memory: renderMemory,
+};
+
+let currentPage = 'home';
+
+function navigate(pageId) {
+  if (!RENDERERS[pageId]) return;
+  currentPage = pageId;
+
+  // Update nav
+  document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === pageId);
+  });
+
+  // Breadcrumb
+  const meta = PAGE_META[pageId];
+  const bc = document.getElementById('breadcrumb-cur');
+  if (bc) bc.textContent = meta.breadcrumb;
+
+  // Render
+  const content = document.getElementById('content');
+  if (content) content.innerHTML = RENDERERS[pageId]();
+
+  // Re-attach runner buttons
+  if (pageId === 'runner') {
+    const sc = document.getElementById('console-wrap');
+    if (sc) sc.scrollTop = sc.scrollHeight;
+  }
+}
+
+// Sidebar clicks
+document.getElementById('sidebar').addEventListener('click', e => {
+  const item = e.target.closest('[data-page]');
+  if (item) navigate(item.dataset.page);
+});
+
+// Init
+navigate('home');
+</script>
+</body>
+</html>
