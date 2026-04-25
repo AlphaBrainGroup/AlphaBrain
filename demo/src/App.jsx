@@ -25,14 +25,18 @@ export default function App() {
 
   return (
     <>
-      <div className="bg-grid" />
-      <div className="bg-glow-1" />
-      <div className="bg-glow-2" />
+      <div className="bg-layer">
+        <div className="bg-dot-grid" />
+        <div className="bg-glow bg-glow-1" />
+        <div className="bg-glow bg-glow-2" />
+      </div>
       <div className="app-shell">
         <Sidebar active={page} onNav={setPage} />
-        <div className="main-content">
+        <div className="main">
           <TopBar page={page} onNav={setPage} />
-          <PageComponent onNav={setPage} />
+          <div className="content">
+            <PageComponent onNav={setPage} />
+          </div>
         </div>
       </div>
     </>
