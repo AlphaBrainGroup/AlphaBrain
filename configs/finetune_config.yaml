@@ -348,11 +348,11 @@ modes:
   # --------------------------------------------------------------------------
   # PaliGemmaPi05 (π₀.₅ Flow Matching) — multi-task LIBERO, openpi-aligned
   # openpi official: BS=256, 30k steps → 7.68M samples
-  # Ours: per_device=32, 2 GPU, acc=4 → effective BS=256, 60k steps → 15.36M
+  # Ours: per_device=64, 4 GPU, acc=1 → effective BS=256, 60k steps → 15.36M
   # --------------------------------------------------------------------------
   paligemma_pi0_openpi_aligned_v3:
     model: paligemma_pi0
-    num_gpus: 2
+    num_gpus: 4
     main_process_port: 29510
     run_id: "paligemma_pi0_openpi_aligned_v3"
     wandb_project: "vla-engine-benchmark"
@@ -361,12 +361,12 @@ modes:
     data_root: "${LIBERO_DATA_ROOT}"
     dataset: libero
     dataset_mix: "libero_all"
-    deepspeed_config: "configs/deepspeed/accelerate_zero2_2gpu_nooffload.yaml"
+    deepspeed_config: "configs/deepspeed/accelerate_zero2_4gpu_nooffload.yaml"
     use_ddp: false
     wandb_mode: "disabled"
     training:
-      per_device_batch_size: 32
-      gradient_accumulation_steps: 4
+      per_device_batch_size: 64
+      gradient_accumulation_steps: 1
       max_train_steps: 60000
       save_interval: 10000
       eval_interval: 120001
@@ -413,6 +413,7 @@ modes:
         action_horizon: 10
         state_dim: 8
         include_state: true
+        video_backend: torchcodec
     extra_args: []
 
   # --------------------------------------------------------------------------
