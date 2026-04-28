@@ -83,15 +83,16 @@ class M1Inference:
         # "normalized_actions"; skip client-side unnormalization to avoid double-unnorm.
         self.skip_client_unnorm = False
         self.invert_gripper_after_unnorm = False  # Pi0/Pi0.5 without internal norm needs gripper invert
+        _PI0_FAMILY = ('PaliGemmaPi0', 'PaliGemmaPi05', 'LlamaPi0', 'LlamaPi05', 'Pi0OFT')
         try:
             from AlphaBrain.model.framework.config_utils import read_mode_config
             _mc, _ = read_mode_config(Path(policy_ckpt_path))
             _fw_name = _mc.get('framework', {}).get('name', '')
             _norm_cfg = _mc.get('framework', {}).get('normalization', {})
-            if _fw_name in ('PaliGemmaPi0', 'Pi0OFT', 'LlamaPi0') and _norm_cfg.get('enabled', False):
+            if _fw_name in _PI0_FAMILY and _norm_cfg.get('enabled', False):
                 self.skip_client_unnorm = True
                 logging.info(f"[M1Inference] Detected {_fw_name} with internal MEAN_STD norm → skipping client unnorm")
-            elif _fw_name in ('PaliGemmaPi0', 'Pi0OFT', 'LlamaPi0') and not _norm_cfg.get('enabled', False):
+            elif _fw_name in _PI0_FAMILY and not _norm_cfg.get('enabled', False):
                 self.invert_gripper_after_unnorm = True
                 logging.info(f"[M1Inference] Detected {_fw_name} without internal norm → will invert gripper after unnorm")
         except Exception as e:
