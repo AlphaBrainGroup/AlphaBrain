@@ -363,11 +363,11 @@ modes:
     dataset_mix: "libero_all"
     deepspeed_config: "configs/deepspeed/accelerate_zero2_4gpu_nooffload.yaml"
     use_ddp: false
-    wandb_mode: "disabled"
+    wandb_mode: "online"
     training:
       per_device_batch_size: 64
       gradient_accumulation_steps: 1
-      max_train_steps: 60000
+      max_train_steps: 30000
       save_interval: 10000
       eval_interval: 120001
       freeze_modules: ""
@@ -439,6 +439,17 @@ modes:
     num_trials: 10
     host: "127.0.0.1"
     port: 5790
+    gpu_id: 0
+    use_bf16: true
+
+  # PaliGemmaPi05 v3 eval — final_model on all 4 LIBERO suites
+  paligemma_pi0_v3_libero_all_eval:
+    type: "eval"
+    checkpoint: "./results/training/paligemma_pi0_openpi_aligned_v3/final_model"
+    task_suite: "libero_all"
+    num_trials: 10
+    host: "127.0.0.1"
+    port: 5792
     gpu_id: 0
     use_bf16: true
 
