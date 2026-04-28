@@ -161,14 +161,16 @@ final-checkpoint matrix eval.
 
 | Method                       | LIBERO-Goal     | LIBERO-Long | Robocasa-atomic10 |
 |:-----------------------------|:---------------:|:-----------:|:-----------------:|
-|                              | ASR / BWT (pp)  | ASR / BWT   | ASR               |
+|                              | ASR / BWT (pp)  | ASR         | ASR               |
 | Sequential FT                | 9.8 / —         | —           | —                 |
-| ER                           | ~48 / —         | —           | —                 |
-| **MIR (refresh50 recipe)**   | **77.0 / −7.8** | —           | —                 |
+| ER (aligned, buf=1000)       | ~52 / —         | 16.0        | —                 |
+| **MIR (refresh50 recipe)**   | **77.0 / −7.8** | **30.0**    | —                 |
 
 </div>
 
-`—` rows are in-flight or out of current scope.
+`—` rows are in-flight or out of current scope.  BWT requires a full
+T×T matrix eval (drop `--last-only`); LIBERO-Long / Robocasa numbers
+above are 50-trial × 10-task final-checkpoint single-row evals.
 
 **Cross-architecture reference** (LIBERO-Goal):
 
