@@ -1,4 +1,4 @@
-run_id: alphabrain_er_lora_libero_goal_v1
+run_id: alphabrain_er_lora_libero_long
 run_root_dir: results/Checkpoints
 seed: 42
 trackers: [jsonl, wandb]
@@ -50,7 +50,7 @@ datasets:
   vla_data:
     dataset_py: lerobot_datasets
     data_root_dir: ${oc.env:LEROBOT_LIBERO_DATA_DIR}
-    dataset_mix: libero_goal
+    dataset_mix: libero_long
     action_type: delta_qpos
     sequential_step_sampling: False
     CoT_prompt: "Your task is {instruction}. To identify the key objects for your task. Locate their bounding boxes in [x1,y1,x2,y2] format."
@@ -67,7 +67,7 @@ datasets:
 # ============================================================================
 
 continual_learning:
-  task_sequence: libero_goal
+  task_sequence: libero_long
   steps_per_task: 10000
   save_checkpoint_per_task: true
 

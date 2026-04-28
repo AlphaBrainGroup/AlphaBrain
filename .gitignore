@@ -280,4 +280,6 @@ configs/continual_learning/stage_info/
 configs/continual_learning/*phaser*.yaml
 scripts/run_continual_learning_scripts/run_phaser_*.sh
 scripts/phase_segmentation/
+scripts/_phaser_*.sh
+scripts/_phaser_*.py
 results/

@@ -121,6 +121,10 @@ if [ -f "$REPO_ROOT/.env" ]; then
     source "$REPO_ROOT/.env"; set +a
 fi
 
+# Server (and merge) need to import the in-tree `AlphaBrain` package and the
+# `benchmarks/` namespace.  Mirror run_cl_eval.sh (line 213).
+export PYTHONPATH="${REPO_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
+
 SERVER_PYTHON="${ALPHABRAIN_PYTHON:-python}"
 ROBOCASA_PYTHON="${ROBOCASA365_PYTHON:-}"
 
@@ -198,10 +202,10 @@ if [ "$LORA_MODE" -eq 1 ]; then
         printf "[%s] merging: %s\n" "$(date '+%H:%M:%S')" "$name"
         CUDA_VISIBLE_DEVICES="$GPUS" "$SERVER_PYTHON" -m \
             AlphaBrain.training.trainer_utils.peft.merge_lora_checkpoint \
-            --base-config "$BASE_CONFIG" \
-            --adapter-path "$adapter" \
-            --action-model-path "$action_model" \
-            --out "$merged"
+            --base_config "$BASE_CONFIG" \
+            --lora_adapter_dir "$adapter" \
+            --action_model_pt  "$action_model" \
+            --output_path      "$merged"
     done
     echo "[$(date '+%H:%M:%S')] ✓ All merges complete."
     echo ""
@@ -252,15 +256,15 @@ run_one_ckpt() {
         "$(date '+%H:%M:%S')" "$N_EPISODES" "${#TASK_LIST[@]}" "$name"
 
     "$ROBOCASA_PYTHON" "$REPO_ROOT/benchmarks/Robocasa365/eval/simulation_env.py" \
-        --pretrained-path "$ckpt" \
-        --host 127.0.0.1 --port "$port" \
-        --task-list "$TASK_LIST_CSV" \
-        --no-sort-tasks \
-        --n-episodes "$N_EPISODES" \
-        --n-envs "$N_ENVS" \
-        --n-action-steps "$N_ACTION_STEPS" \
-        --video-out-path "$out_dir" \
-        --split "atomic_cl10" \
+        --args.pretrained-path "$ckpt" \
+        --args.host 127.0.0.1 --args.port "$port" \
+        --args.task-list "$TASK_LIST_CSV" \
+        --args.no-sort-tasks \
+        --args.n-episodes "$N_EPISODES" \
+        --args.n-envs "$N_ENVS" \
+        --args.n-action-steps "$N_ACTION_STEPS" \
+        --args.video-out-path "$out_dir" \
+        --args.split "${ROBOCASA_EVAL_SPLIT:-pretrain}" \
         2>&1 \
         | tee "$out_dir/eval.log" \
         | grep --line-buffered -E "Running simulation|Results for|EP [0-9]+ success|Saved aggregate|cumulative=" \
@@ -269,8 +273,9 @@ run_one_ckpt() {
     printf "[%s] [3/3] killing server: %s\n" "$(date '+%H:%M:%S')" "$name"
     kill $server_pid 2>/dev/null; wait $server_pid 2>/dev/null || true
 
-    # Pull aggregate stats
-    local agg="$out_dir/atomic_cl10/aggregate_stats.json"
+    # Pull aggregate stats (split-prefixed by simulation_env.py at line 240)
+    local split="${ROBOCASA_EVAL_SPLIT:-pretrain}"
+    local agg="$out_dir/$split/aggregate_stats.json"
     if [ -f "$agg" ]; then
         local mean
         mean=$("$SERVER_PYTHON" -c "import json; d=json.load(open('$agg')); print(f\"{d['mean_success_rate']*100:.1f}\")" 2>/dev/null || echo "?")

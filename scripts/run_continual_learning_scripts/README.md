@@ -221,39 +221,52 @@ continual_learning:
 
 ## Results
 
-We benchmark each architecture on **LIBERO-Goal**, training sequentially
-on 10 tasks (50 demonstrations per task) and evaluating the final
-checkpoint against the full 10-task matrix.  Headline rows are at
-**50 rollouts per task** (the production CL eval); legacy
-cross-architecture rows are at 10 rollouts per task (early screening).
-**Avg SR** is the mean across the 10 tasks; **BWT** (Backward Transfer,
-Lopez-Paz & Ranzato 2017) is `1/(N−1) · Σ_{i<N} (a_{N,i} − a_{i,i})` in
-percentage points: `0` = no forgetting, negative = the final checkpoint
-performs worse on prior tasks than right after training them.  BWT
-requires the full T×T evaluation matrix; rows without one are marked
-`—` and will be filled in once their matrix re-eval lands.  Recompute
-ASR / BWT / F for any matrix run via
+We benchmark each (algorithm × dataset) cell at the standard CL eval
+budget — **50 rollouts per task × 10 tasks = 500 episodes** —
+training sequentially on a 10-task stream and evaluating the final
+checkpoint against the full 10-task matrix.  **ASR** is mean Avg
+Success Rate across the 10 tasks; **BWT** (Backward Transfer, Lopez-Paz
+& Ranzato 2017) is `1/(N−1) · Σ_{i<N} (a_{N,i} − a_{i,i})` in
+percentage points (`0` = no forgetting, negative = forgetting on prior
+tasks).  BWT requires the full T×T evaluation matrix; rows without one
+are marked `—` and will be filled in once the matrix eval lands.
+Recompute ASR / BWT / F for any matrix run via
 [`compute_cl_matrix_metrics.py`](compute_cl_matrix_metrics.py).
+
+### Main leaderboard
+
+Backbone: **QwenGR00T-3B + LoRA (r=32)** unless noted.  Trials: **50
+rollouts × 10 tasks** (production setting).  Cells marked `(pending)`
+have an in-flight run whose number will land in a subsequent commit;
+`—` denotes the cell is intentionally unscoped (e.g. EWC on Robocasa
+not in current scope).
 
 <div align="center">
 
-| Architecture  | Method                | Avg SR    | BWT (pp) | Rollouts/task |
-|:--------------|:----------------------|:---------:|:--------:|:-------------:|
-| **QwenGR00T** | **LoRA (r=32) + MIR (refresh50)** | **77.0 %** | **−7.8** | **50** |
-| QwenGR00T     | Full-parameter + ER   | 51.6 %    | —        | 50 |
-| QwenGR00T     | LoRA (r=32) + ER      | ~48 %     | —        | 10 |
-| NeuroVLA      | Full-parameter + ER   | ~40 %     | —        | 10 |
-| NeuroVLA      | LoRA (r=32) + ER      | ~28 %     | —        | 10 |
-| LlamaOFT      | LoRA (r=16) + ER      | ~17 %     | —        | 10 |
-| QwenGR00T     | LoRA (r=32) + EWC     | _no convergent λ in 1e3–1e10 sweep_ | — | — |
+| Method                          | LIBERO-Goal      | LIBERO-Long      | Robocasa-atomic10 ⭐  |
+|:--------------------------------|:----------------:|:----------------:|:---------------------:|
+|                                 | ASR / BWT (pp)   | ASR / BWT (pp)   | ASR / BWT (pp)        |
+| Sequential FT (no CL)           | 9.8 % / —        | (pending)        | (pending)             |
+| ER (LoRA, b=500)                | ~48 % / —        | (pending)        | (pending)             |
+| **MIR — refresh50 recipe** ⭐    | **77.0 / −7.8**  | (pending)        | (pending)             |
+| EWC                             | _no convergent λ_| —                | —                     |
 
 </div>
 
-**Baseline** (naive sequential fine-tuning, no CL): **below 10 %**
-across all architectures — catastrophic forgetting dominates.
+⭐ = newly added in this fork (MIR algorithm family + Robocasa-atomic10
+benchmark integration).  `_no convergent λ_` = EWC λ ∈ {1e3, 1e4, …,
+1e10} all failed to outperform Sequential FT on LIBERO-Goal.
 
-The MIR row uses our recommended LIBERO-Goal recipe — see
-[Recommended recipe](#recommended-libero-goal-recipe) below.
+**Cross-architecture reference** (LIBERO-Goal, 50-trial unless noted):
+
+| Backbone             | Method            | ASR    |
+|:---------------------|:------------------|:------:|
+| OpenVLA-7B + LoRA    | ER (b=110)        | 77.6 % |
+| QwenGR00T-3B (full)  | ER (b=1000)       | 51.6 % |
+| NeuroVLA + ER        | full-param        | ~40 %* |
+| NeuroVLA + ER        | LoRA              | ~28 %* |
+| LlamaOFT + ER        | LoRA (r=16)       | ~17 %* |
+*10-trial legacy screening; not directly comparable to 50-trial main rows.
 
 > Numbers are conservative estimates from our internal runs; per-run
 > variance is a few percentage points depending on seed, simulator
