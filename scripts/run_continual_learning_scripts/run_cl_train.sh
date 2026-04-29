@@ -50,10 +50,8 @@ Common:
                          qwengr00t_er_libero.yaml                  (Full-param + ER)
                          qwengr00t_ewc_lora_libero.yaml            (LoRA + EWC)
                        LIBERO-Long (libero_10):
-                         qwengr00t_er_lora_libero_long.yaml        (LoRA + ER)
-                       Robocasa-atomic10:
-                         qwengr00t_er_lora_robocasa_atomic10.yaml  (LoRA + ER)
-                         qwengr00t_mir_lora_robocasa_atomic10.yaml (LoRA + MIR)
+                         qwengr00t_er_lora_libero_long.yaml         (LoRA + ER)
+                         qwengr00t_mir_lora_libero_long_refresh50.yaml  (LoRA + MIR — 77% recipe ported to long)
                        Other backbones (LIBERO-Goal):
                          neurovla_er_lora_libero.yaml              (NeuroVLA  + LoRA + ER)
                          llamaoft_er_lora_libero.yaml              (LlamaOFT  + LoRA + ER)
@@ -78,8 +76,8 @@ Examples:
   # MIR 77% LIBERO-Goal recipe
   bash $0 --yaml configs/continual_learning/qwengr00t_mir_lora_libero_refresh50.yaml --gpus 0,1,2,3
 
-  # Robocasa-atomic10 with ER
-  bash $0 --yaml configs/continual_learning/qwengr00t_er_lora_robocasa_atomic10.yaml
+  # MIR on LIBERO-Long (same recipe ported to libero_long stream)
+  bash $0 --yaml configs/continual_learning/qwengr00t_mir_lora_libero_long_refresh50.yaml --gpus 0,1,2,3
 
   # custom override passed to OmegaConf
   bash $0 --yaml configs/continual_learning/qwengr00t_er_lora_libero.yaml -- \\

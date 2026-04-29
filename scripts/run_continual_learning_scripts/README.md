@@ -346,14 +346,16 @@ custom streams beyond LIBERO.
 
 | Yaml                                          | Backbone     | Variant         | Algo | Stream             |
 |:----------------------------------------------|:-------------|:----------------|:-----|:-------------------|
-| `qwengr00t_er_lora_libero.yaml` (default)     | QwenGR00T    | LoRA (r=32)     | ER   | LIBERO-Goal        |
-| `qwengr00t_er_lora_libero_long.yaml`          | QwenGR00T    | LoRA            | ER   | LIBERO-Long (10)   |
-| `qwengr00t_mir_lora_libero.yaml`              | QwenGR00T    | LoRA            | MIR  | LIBERO-Goal        |
-| `qwengr00t_mir_lora_libero_refresh50.yaml`    | QwenGR00T    | LoRA            | MIR  | LIBERO-Goal (77%)  |
-| `qwengr00t_er_libero.yaml`                    | QwenGR00T    | Full-parameter  | ER   | LIBERO-Goal        |
-| `neurovla_er_lora_libero.yaml`                | NeuroVLA     | LoRA            | ER   | LIBERO-Goal        |
-| `llamaoft_er_lora_libero.yaml`                | LlamaOFT     | LoRA (r=16)     | ER   | LIBERO-Goal        |
-| `paligemma_oft_er_libero.yaml`                | PaliGemmaOFT | Full-parameter  | ER   | LIBERO-Goal        |
+| `qwengr00t_er_lora_libero.yaml` (default)         | QwenGR00T    | LoRA (r=32)     | ER   | LIBERO-Goal        |
+| `qwengr00t_er_lora_libero_long.yaml`              | QwenGR00T    | LoRA            | ER   | LIBERO-Long (10)   |
+| `qwengr00t_mir_lora_libero.yaml`                  | QwenGR00T    | LoRA            | MIR  | LIBERO-Goal        |
+| `qwengr00t_mir_lora_libero_refresh50.yaml`        | QwenGR00T    | LoRA            | MIR  | LIBERO-Goal (77%)  |
+| `qwengr00t_mir_lora_libero_long_refresh50.yaml`   | QwenGR00T    | LoRA            | MIR  | LIBERO-Long (30%)  |
+| `qwengr00t_er_libero.yaml`                        | QwenGR00T    | Full-parameter  | ER   | LIBERO-Goal        |
+| `qwengr00t_ewc_lora_libero.yaml`                  | QwenGR00T    | LoRA            | EWC  | LIBERO-Goal        |
+| `neurovla_er_lora_libero.yaml`                    | NeuroVLA     | LoRA            | ER   | LIBERO-Goal        |
+| `llamaoft_er_lora_libero.yaml`                    | LlamaOFT     | LoRA (r=16)     | ER   | LIBERO-Goal        |
+| `paligemma_oft_er_libero.yaml`                    | PaliGemmaOFT | Full-parameter  | ER   | LIBERO-Goal        |
 
 `qwengr00t_mir_lora_libero_refresh50.yaml` is the 77 % LIBERO-Goal recipe —
 buffer 1000, replay ratio 0.5, balanced sampling, MIR refresh every 50
