@@ -267,7 +267,7 @@ full T×T matrix needed for BWT/F.
 > different mixture, eval will mis-denormalize actions and SR collapses
 > to ~0%.  Recompute on the fly:
 > ```bash
-> python scripts/compute_dataset_statistics.py \
+> python scripts/run_continual_learning_scripts/compute_dataset_statistics.py \
 >     --config configs/continual_learning/<your_config>.yaml \
 >     --out results/Checkpoints/<run_id>/dataset_statistics.json
 > ```
