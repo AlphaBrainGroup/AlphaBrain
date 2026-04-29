@@ -685,62 +685,6 @@ modes:
     extra_args: []
 
   # --------------------------------------------------------------------------
-  # π₀.₅ Flow Matching + LIBERO Goal — 1 traj per task
-  # Uses PaliGemmaPi05 framework (flow matching + action expert); inherits
-  # action_expert / pi05 / action_model defaults from configs/models/paligemma_pi0.yaml.
-  # --------------------------------------------------------------------------
-  pi05_1traj:
-    model: paligemma_pi0
-    num_gpus: 5
-    run_id: "Pi05-1traj-libero_goal"
-    framework_name: "PaliGemmaPi05"
-    data_root: "${LIBERO_DATA_ROOT}"
-    dataset: libero
-    dataset_mix: "libero_goal"
-
-    training:
-      per_device_batch_size: 24
-      gradient_accumulation_steps: 1
-      max_train_steps: 80000
-      save_interval: 10000
-      eval_interval: 80001
-      freeze_modules: ""
-      # OmegaConf-native env interpolation (${oc.env:VAR,default}) — the
-      # bash-style ${VAR:-default} only works for top-level fields that
-      # parse_config.py preprocesses, not nested trainer/training keys.
-      pretrained_checkpoint: "${oc.env:PI05_PRETRAINED_PATH,/datasets/pi05/model.safetensors}"
-
-    framework:
-      normalization:
-        enabled: true
-        action_mean: [0.06278156, 0.08684081, -0.09037306, 0.00054074, 0.00564338, -0.00522910, -0.04964072]
-        action_std: [0.33552372, 0.37844700, 0.44472861, 0.03924354, 0.06339297, 0.07797027, 0.99876714]
-        state_mean: [-0.04651878, 0.03440907, 0.76455247, 2.97220945, -0.22046979, -0.12557940, 0.02691425, -0.02719078]
-        state_std: [0.10494395, 0.15176620, 0.37851673, 0.34427372, 0.90694684, 0.32539192, 0.01417590, 0.01405889]
-
-    datasets:
-      vla_data:
-        dataloader_module: paligemma_datasets
-        action_type: delta_qpos
-        sequential_step_sampling: false
-        num_traj_per_task: 1
-        default_image_resolution: [3, 224, 224]
-        obs: ["image_0"]
-        load_all_data_for_training: true
-        video_backend: torchvision_av
-        include_state: true
-        state_dim: 8
-
-    trainer:
-      learning_rate:
-        base: 2.5e-05
-        action_model: 2.5e-05
-        paligemma_vl_interface: 2.5e-05
-      logging_frequency: 50
-
-    extra_args: []
-
-  # --------------------------------------------------------------------------
   # π₀.₅ Flow Matching + LIBERO Goal — task 0 only (ALL demos, single task)
   # Sanity-check finetune: train on all ~43 demos of LIBERO benchmark task 0
   # "open the middle drawer of the cabinet" (= what RL `--task_id 0` targets;
