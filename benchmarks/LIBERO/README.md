@@ -21,7 +21,6 @@ We provide a collection of pretrained checkpoints on Hugging Face to make commun
 | Model               | Steps | Epochs | Spatial | Object | Goal | Long  | Avg   |
 |---------------------|-------|--------|---------|--------|------|-------|-------|
 | $\pi_0$+FAST | -     | -      | 96.4    | 96.8   | 88.6 | 60.2  | 85.5  |
-| OpenVLA-OFT | 175K  | 223    | 97.6    | 98.4   | 97.9 | 94.5  | 97.1  |
 | $\pi_0$             | -     | -      | 96.8    | 98.8   | 95.8 | 85.2  | 94.1  |
 | GR00T-N1.5 | 20K   | 203    | 92.0    | 92.0   | 86.0 | 76.0  | 86.5  |
 | **Qwen2.5-VL-FAST** | 30K   | 9.54   | 97.3    | 97.2   | 96.1 | 90.2  | 95.2  |

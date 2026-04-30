@@ -185,7 +185,6 @@ data_processed
 llavavla/conf/qwenvla_lmdb_3Lpretrain.yaml
 extracted_frames
 **/bar
-llavavla/model/openvla_temp
 real_deployment/upload/push_model_to_hf.py
 real_deployment/deploy/*bar
 **/*.mp4
@@ -255,3 +254,41 @@ jeff_modify.md
 AlphaBrain.egg-info
 .nfs*
 *.egg-info
+
+# ============================================================================
+# Internal / WIP experiment tracking — NEVER push these.
+# Intermediate hyperparameter-sweep artefacts (tracking docs, per-run result
+# dumps, scratch comparison tables) live only locally.  Only *final* writeups
+# (e.g. docs/continual_learning/EXPERIMENTS.md with reproducible numbers)
+# belong in the repo.
+# ============================================================================
+docs/continual_learning/EXPERIMENT_MATRIX.md
+docs/continual_learning/EXPERIMENT_MATRIX_*.md
+docs/continual_learning/internal/
+docs/continual_learning/sweep_*.md
+EXPERIMENT_LOG*.md
+*_sweep_results.md
+*_sweep_results.json
+
+# ============================================================================
+# PHASER (phase-aware replay) — under-review paper; never push to remote.
+# All algorithm code, configs, stage_info JSON, and eval artefacts stay local.
+# ============================================================================
+AlphaBrain/training/continual_learning/algorithms/rehearsal_based/phaser.py
+configs/continual_learning/stage_info/
+configs/continual_learning/*phaser*.yaml
+scripts/run_continual_learning_scripts/run_phaser_*.sh
+scripts/phase_segmentation/
+scripts/_phaser_*.sh
+scripts/_phaser_*.py
+
+# Sweep / hyperparameter-search artefacts — intermediate, never push.
+# Keep frozen recipe yamls (e.g. *_refresh50.yaml); exclude any *_sweep_* /
+# *_widepool_* / *_aligned_* style variants.
+scripts/run_continual_learning_scripts/run_*_sweep.sh
+scripts/run_continual_learning_scripts/run_*_lambda_sweep.sh
+configs/continual_learning/*_sweep_*.yaml
+configs/continual_learning/*_widepool_*.yaml
+configs/continual_learning/*_aligned_*.yaml
+*_sweep.py
+results/

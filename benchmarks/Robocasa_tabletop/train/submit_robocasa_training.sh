@@ -34,7 +34,7 @@ export MASTER_PORT=$((RANDOM % 101 + 20000))
 
 
 cd "${ALPHABRAIN_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"  # e.g. /path/to/AlphaBrain
-export PYTHONPATH="$PWD/AlphaBrain/model/openvla:$PYTHONPATH"
+export PYTHONPATH="$PWD:$PYTHONPATH"
 
 # conda activate llavavla310
 proxy_on

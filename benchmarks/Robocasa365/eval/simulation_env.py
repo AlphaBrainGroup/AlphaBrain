@@ -143,6 +143,8 @@ class Args:
     port: int = 5678
     resize_size: list[int] = dataclasses.field(default_factory=lambda: [224, 224])
     task_set: str = "target50"
+    task_list: str = ""              # comma-separated env names, takes precedence over task_set if set
+    sort_tasks: bool = True          # sort task names alphabetically before iterating
     split: str = "target"
     n_episodes: int = 50
     n_envs: int = 1
@@ -161,17 +163,31 @@ def eval_robocasa365(args: Args) -> None:
     os.makedirs(args.video_out_path, exist_ok=True)
     np.random.seed(args.seed)
 
-    if "," in args.task_set:
-        task_sets = [task.strip() for task in args.task_set.split(",") if task.strip()]
+    # `--task-list` (free-form env names) takes precedence over `--task-set`
+    # (registered preset).  This lets CL workflows evaluate on an arbitrary
+    # subset of atomic / composite tasks (e.g. our `robocasa365_cl_atomic10`
+    # 10-task stream) without having to register a new preset upstream.
+    if args.task_list.strip():
+        all_env_names = [name.strip() for name in args.task_list.split(",") if name.strip()]
+        task_sets = ["custom_task_list"]
     else:
-        task_sets = [args.task_set]
+        if "," in args.task_set:
+            task_sets = [task.strip() for task in args.task_set.split(",") if task.strip()]
+        else:
+            task_sets = [args.task_set]
 
-    all_env_names = []
-    for task_set in task_sets:
-        if task_set not in TASK_SET_REGISTRY:
-            raise ValueError(f"Unknown task_set `{task_set}`. Available keys include: {list(TASK_SET_REGISTRY.keys())[:8]}")
-        all_env_names.extend(TASK_SET_REGISTRY[task_set])
-    all_env_names = sorted(set(all_env_names))
+        all_env_names = []
+        for task_set in task_sets:
+            if task_set not in TASK_SET_REGISTRY:
+                raise ValueError(f"Unknown task_set `{task_set}`. Available keys include: {list(TASK_SET_REGISTRY.keys())[:8]}")
+            all_env_names.extend(TASK_SET_REGISTRY[task_set])
+
+    if args.sort_tasks:
+        all_env_names = sorted(set(all_env_names))
+    else:
+        # Preserve user-supplied order, but de-duplicate.
+        seen = set()
+        all_env_names = [n for n in all_env_names if not (n in seen or seen.add(n))]
 
     model = PolicyWarper(
         policy_ckpt_path=args.pretrained_path,

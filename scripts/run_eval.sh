@@ -140,7 +140,7 @@ trap cleanup EXIT INT TERM
 
 # 等待 server 就绪（轮询端口）
 info "Waiting for server to be ready on port ${C_CYAN}${EVAL_PORT}${C_RESET} ..."
-MAX_WAIT=300   # 最多等 5 分钟（模型加载可能较慢）
+MAX_WAIT=900   # 最多等 15 分钟（PaliGemmaPi0 cold-read from /datasets/pi05 + peligemma 可达 ~5min）
 WAITED=0
 while ! "${SERVER_PYTHON}" -c "import socket; s=socket.socket(); s.settimeout(1); s.connect(('${EVAL_HOST}', ${EVAL_PORT})); s.close()" 2>/dev/null; do
     if ! kill -0 "${SERVER_PID}" 2>/dev/null; then

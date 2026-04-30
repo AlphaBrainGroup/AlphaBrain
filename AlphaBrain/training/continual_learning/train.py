@@ -1,28 +1,35 @@
 """
 Continual Learning Trainer for AlphaBrain.
 
-Trains a VLA model sequentially on a stream of tasks, with optional
-Experience Replay to mitigate catastrophic forgetting.
+Trains a VLA model sequentially on a stream of tasks, delegating the CL
+strategy (Experience Replay / EWC / RETAIN / DWE / …) to a pluggable
+``CLAlgorithm`` instance built by
+:func:`AlphaBrain.training.continual_learning.algorithms.build_cl_algorithm`.
 
 Design:
 - Follows the framework convention of one trainer file per training strategy.
 - Reuses existing build_framework, build_dataloader, and TrainerUtils.
-- Adds an outer loop over tasks and integrates the replay buffer.
+- Adds an outer loop over tasks.
+- Invokes the CL algorithm via ``observe`` / ``modify_batch`` /
+  ``compute_penalty`` / ``on_task_start`` / ``on_task_end`` hooks — so
+  adding new methods doesn't require touching this file.
 
 Config:
-    Add a `continual_learning` section to your YAML:
+    Add a ``continual_learning`` section to your YAML.  Two config styles
+    are supported; see ``algorithms/__init__.py::build_cl_algorithm`` for
+    details.  Replay-style (existing / back-compat) example::
 
-    continual_learning:
-      task_sequence: libero_spatial     # CL sequence name (see continual_learning.py)
-      steps_per_task: 10000             # training steps per task
-      save_checkpoint_per_task: true    # save after each task
+        continual_learning:
+          task_sequence: libero_spatial     # CL sequence name
+          steps_per_task: 10000             # training steps per task
+          save_checkpoint_per_task: true    # save after each task
 
-      replay:
-        enabled: true
-        method: experience_replay       # replay method (currently only ER)
-        buffer_size_per_task: 500       # samples to store per past task
-        replay_batch_ratio: 0.3         # fraction of each batch from replay
-        balanced_sampling: false        # equal samples per task vs. uniform
+          replay:
+            enabled: true
+            method: experience_replay       # currently only ER
+            buffer_size_per_task: 500       # samples per past task
+            replay_batch_ratio: 0.3         # fraction of each batch from replay
+            balanced_sampling: false        # equal per task vs. uniform
 """
 
 import argparse
@@ -47,9 +54,13 @@ from transformers import get_scheduler
 
 from AlphaBrain.dataloader import build_dataloader
 from AlphaBrain.dataloader.lerobot_datasets import get_vla_dataset, collate_fn
-from AlphaBrain.training.continual_learning.algorithms import ReplayBuffer
+from AlphaBrain.training.continual_learning.algorithms import (
+    CLContext,
+    build_cl_algorithm,
+)
 from AlphaBrain.training.continual_learning.datasets.task_sequences import (
     CL_TASK_SEQUENCES,
+    build_dataset_task_map,
     build_episode_task_map,
     get_task_sequence,
     TaskFilteredDataset,
@@ -81,19 +92,28 @@ def build_full_dataset(cfg):
     return get_vla_dataset(data_cfg=vla_dataset_cfg)
 
 
-def build_task_dataloader(full_dataset, task_index, episode_task_map, cfg):
+def build_task_dataloader(
+    full_dataset, task_index, episode_task_map, cfg, *, task_stream_mode="by_task_index"
+):
     """Build a DataLoader for a specific task by filtering the full dataset."""
     filtered_dataset = TaskFilteredDataset(
         base_dataset=full_dataset,
         task_indices=[task_index],
         episode_task_map=episode_task_map,
+        task_stream_mode=task_stream_mode,
     )
+    # num_workers configurable per-yaml so heavy 3-camera embodiments (Robocasa)
+    # can fall back to 0 (synchronous main-thread reads) when libav workers
+    # accumulate state over long runs and segfault at task transitions.
+    num_workers = int(cfg.datasets.vla_data.get("num_workers", 4))
     dataloader = DataLoader(
         filtered_dataset,
         batch_size=cfg.datasets.vla_data.per_device_batch_size,
         collate_fn=collate_fn,
-        num_workers=4,
+        num_workers=num_workers,
         shuffle=True,
+        # persistent_workers requires num_workers > 0 (PyTorch raises otherwise).
+        persistent_workers=num_workers > 0,
     )
     return dataloader, filtered_dataset
 
@@ -128,18 +148,9 @@ class ContinualVLATrainer(TrainerUtils):
         from AlphaBrain.training.trainer_utils.peft import is_lora_enabled
         self.use_lora = is_lora_enabled(cfg)
 
-        # Replay buffer
-        replay_cfg = self.cl_cfg.replay
-        self.replay_enabled = replay_cfg.get("enabled", False)
-        if self.replay_enabled:
-            self.replay_buffer = ReplayBuffer(
-                buffer_size_per_task=replay_cfg.get("buffer_size_per_task", 500),
-                seed=cfg.get("seed", 42),
-            )
-            self.replay_batch_ratio = replay_cfg.get("replay_batch_ratio", 0.3)
-            self.balanced_sampling = replay_cfg.get("balanced_sampling", False)
-        else:
-            self.replay_buffer = None
+        # Continual-learning algorithm (ER / MIR / EWC / ...).
+        # None means "plain sequential baseline — no CL intervention".
+        self.cl_algorithm = build_cl_algorithm(cfg, seed=cfg.get("seed", 42))
 
     def prepare_training(self):
         """Initialize training state (checkpoints, freezing, distributed setup)."""
@@ -181,6 +192,7 @@ class ContinualVLATrainer(TrainerUtils):
         seq_cfg = get_task_sequence(self.cl_cfg.task_sequence)
         num_tasks = seq_cfg["num_tasks"]
         task_order = seq_cfg.get("task_order", list(range(num_tasks)))
+        task_stream_mode = seq_cfg.get("task_stream_mode", "by_task_index")
         steps_per_task = self.cl_cfg.steps_per_task
         save_per_task = self.cl_cfg.get("save_checkpoint_per_task", True)
 
@@ -191,19 +203,26 @@ class ContinualVLATrainer(TrainerUtils):
                 f"Resuming from step {self.completed_steps}: "
                 f"skipping {start_task_idx} completed tasks"
             )
-            # Rebuild replay buffer from completed tasks
-            if self.replay_enabled:
+            # Rebuild CL algorithm state by replaying on_task_end for each
+            # completed task (ER re-populates its buffer, EWC re-computes
+            # Fisher from snapshots, RETAIN re-applies merges, etc.).
+            if self.cl_algorithm is not None:
                 for skip_idx in range(start_task_idx):
                     skip_task_id = task_order[skip_idx]
                     _, skip_dataset = build_task_dataloader(
-                        full_dataset, skip_task_id, episode_task_map, self.config
+                        full_dataset, skip_task_id, episode_task_map, self.config,
+                        task_stream_mode=task_stream_mode,
                     )
-                    self.replay_buffer.populate_from_dataset(
-                        task_id=skip_task_id, dataset=skip_dataset,
+                    skip_ctx = CLContext(
+                        task_id=skip_task_id,
+                        model=self.model,
+                        task_dataset=skip_dataset,
+                        accelerator=self.accelerator,
                     )
+                    self.cl_algorithm.on_task_end(skip_ctx)
                 logger.info(
-                    f"Rebuilt replay buffer for {start_task_idx} completed tasks: "
-                    f"{self.replay_buffer}"
+                    f"Rebuilt CL algorithm state for {start_task_idx} completed tasks: "
+                    f"{self.cl_algorithm.describe()}"
                 )
 
         self._log_cl_config(num_tasks, steps_per_task)
@@ -236,13 +255,25 @@ class ContinualVLATrainer(TrainerUtils):
 
             # Build per-task dataloader
             task_dataloader, task_dataset = build_task_dataloader(
-                full_dataset, task_id, episode_task_map, self.config
+                full_dataset, task_id, episode_task_map, self.config,
+                task_stream_mode=task_stream_mode,
             )
 
             # Prepare dataloader for distributed training
             self.accelerator.dataloader_config.dispatch_batches = False
             task_dataloader = self.accelerator.prepare(task_dataloader)
             dist.barrier()
+
+            # Pre-task CL hook (DWE expands model, LwF snapshots teacher, …)
+            if self.cl_algorithm is not None:
+                task_start_ctx = CLContext(
+                    task_id=task_id,
+                    model=self.model,
+                    task_dataset=task_dataset,
+                    task_dataloader=task_dataloader,
+                    accelerator=self.accelerator,
+                )
+                self.cl_algorithm.on_task_start(task_start_ctx)
 
             # Reset LR scheduler for new task
             # Unwrap through AcceleratedOptimizer → DeepSpeedZeroOptimizer → base AdamW
@@ -267,14 +298,22 @@ class ContinualVLATrainer(TrainerUtils):
                 steps_per_task=steps_per_task,
             )
 
-            # Post-task: populate replay buffer
-            if self.replay_enabled:
-                logger.info(f"Populating replay buffer for task {task_id}...")
-                self.replay_buffer.populate_from_dataset(
-                    task_id=task_id,
-                    dataset=task_dataset,
+            # Post-task CL hook (ER populates, EWC computes Fisher, RETAIN merges, …)
+            if self.cl_algorithm is not None:
+                logger.info(
+                    f"Running {self.cl_algorithm.name}.on_task_end for task {task_id}..."
                 )
-                logger.info(f"Replay buffer state: {self.replay_buffer}")
+                task_end_ctx = CLContext(
+                    task_id=task_id,
+                    model=self.model,
+                    task_dataset=task_dataset,
+                    task_dataloader=task_dataloader,
+                    accelerator=self.accelerator,
+                )
+                self.cl_algorithm.on_task_end(task_end_ctx)
+                logger.info(
+                    f"CL state after task {task_id}: {self.cl_algorithm.describe()}"
+                )
 
             # Save checkpoint after task
             if save_per_task:
@@ -314,9 +353,11 @@ class ContinualVLATrainer(TrainerUtils):
                 )
                 batch = next(data_iter)
 
-            # Mix with replay buffer if available
-            if self.replay_enabled and not self.replay_buffer.is_empty():
-                batch = self._mix_with_replay(batch)
+            # CL per-step hooks: algorithm may inject replay samples, record
+            # path-integrals, etc.  Default implementations are no-ops.
+            if self.cl_algorithm is not None:
+                self.cl_algorithm.observe(batch, task_id)
+                batch = self.cl_algorithm.modify_batch(batch, task_id)
 
             # Training step
             t_start = time.perf_counter()
@@ -332,8 +373,8 @@ class ContinualVLATrainer(TrainerUtils):
             step_metrics["task_id"] = task_id
             step_metrics["task_step"] = task_step
             step_metrics["model_time"] = t_end - t_start
-            if self.replay_enabled:
-                step_metrics["replay_buffer_size"] = self.replay_buffer.total_samples
+            if self.cl_algorithm is not None:
+                step_metrics.update(self.cl_algorithm.metrics())
             self._log_metrics(step_metrics)
 
             # Periodic save within task
@@ -343,39 +384,13 @@ class ContinualVLATrainer(TrainerUtils):
 
         progress_bar.close()
 
-    def _mix_with_replay(self, current_batch: list) -> list:
-        """Mix current task batch with replay samples.
-
-        Uses round() instead of int() to avoid truncation at small batch sizes
-        (e.g. batch=4, ratio=0.3 → int gives 1, round gives 1, but we enforce
-        a minimum of 2 to provide meaningful replay signal).
-
-        Args:
-            current_batch: List of sample dicts from current task.
-
-        Returns:
-            Mixed batch with some samples replaced by replay samples.
-        """
-        batch_size = len(current_batch)
-        num_replay = max(2, round(batch_size * self.replay_batch_ratio))
-        num_replay = min(num_replay, batch_size - 1)  # keep at least 1 current sample
-        num_current = batch_size - num_replay
-
-        # Sample from replay buffer
-        if self.balanced_sampling:
-            replay_samples = self.replay_buffer.sample_balanced(num_replay)
-        else:
-            replay_samples = self.replay_buffer.sample(num_replay)
-
-        # Shuffle current batch before slicing to avoid always dropping the same samples
-        import random
-        current_shuffled = current_batch.copy()
-        random.shuffle(current_shuffled)
-        mixed_batch = current_shuffled[:num_current] + replay_samples
-        return mixed_batch
-
     def _train_step(self, batch, lr_scheduler):
-        """Execute a single training step."""
+        """Execute a single training step.
+
+        The task loss is the model's own `action_loss` plus an optional
+        algorithm-provided penalty (EWC / SI regularizer).  Algorithms that
+        don't need a penalty return ``None`` from :meth:`compute_penalty`.
+        """
         with self.accelerator.accumulate(self.model):
             self.optimizer.zero_grad()
 
@@ -384,7 +399,23 @@ class ContinualVLATrainer(TrainerUtils):
                 action_loss = output_dict["action_loss"]
                 total_loss = action_loss
 
+                penalty_value: float = 0.0
+                if self.cl_algorithm is not None:
+                    penalty = self.cl_algorithm.compute_penalty(self.model)
+                    if penalty is not None:
+                        total_loss = total_loss + penalty
+                        # Detach for logging — no grad needed on the scalar copy.
+                        penalty_value = float(penalty.detach().item())
+
             self.accelerator.backward(total_loss)
+
+            # After-backward hook: param.grad is populated and reduced;
+            # optimizer hasn't consumed it yet.  MIR snapshots the current
+            # gradient here to drive its next refresh's virtual step (doing
+            # the backward inside MIR directly would break DeepSpeed ZeRO-2's
+            # single-reduction-per-micro-batch assumption).
+            if self.cl_algorithm is not None:
+                self.cl_algorithm.after_backward(self.model)
 
             if self.config.trainer.gradient_clipping is not None:
                 self.accelerator.clip_grad_norm_(
@@ -394,7 +425,15 @@ class ContinualVLATrainer(TrainerUtils):
             self.optimizer.step()
             lr_scheduler.step()
 
-        return {"action_dit_loss": action_loss.item()}
+        # Split loss components so dashboards / grep can see each part
+        # of the sum that drove this step's optimizer update.  For
+        # algorithms that don't return a penalty (ER / MIR) the `cl_penalty`
+        # column stays at 0.0 and `total_loss` == `action_dit_loss`.
+        return {
+            "action_dit_loss": action_loss.item(),
+            "cl_penalty_loss": penalty_value,
+            "total_loss": action_loss.item() + penalty_value,
+        }
 
     # ------------------------------------------------------------------
     # Checkpointing
@@ -483,11 +522,11 @@ class ContinualVLATrainer(TrainerUtils):
                 else:
                     torch.save(state_dict, checkpoint_path + "_pytorch_model.pt")
 
-            # Save replay buffer state
-            if self.replay_enabled:
-                buffer_state = self.replay_buffer.state_dict()
-                with open(checkpoint_path + "_replay_state.json", "w") as f:
-                    json.dump(buffer_state, f, indent=2)
+            # Save CL algorithm state (ER buffer metadata, EWC Fisher stats, …)
+            if self.cl_algorithm is not None:
+                cl_state = self.cl_algorithm.state_dict()
+                with open(checkpoint_path + "_cl_state.json", "w") as f:
+                    json.dump(cl_state, f, indent=2)
 
             logger.info(
                 f"Task checkpoint saved: {checkpoint_path} "
@@ -523,23 +562,45 @@ class ContinualVLATrainer(TrainerUtils):
             metrics["global_step"] = self.completed_steps
             if getattr(self, "_use_wandb", False):
                 wandb.log(metrics, step=self.completed_steps)
-            logger.info(f"Step {self.completed_steps}: {metrics}")
+            # Tag every step line with the active CL method so a glance at
+            # stdout tells you which algorithm produced the numbers.
+            # Tag goes to stdout only — we don't send it to wandb so
+            # dashboards stay numeric.
+            cl_tag = (
+                f"[{self.cl_algorithm.name}] " if self.cl_algorithm is not None else ""
+            )
+            logger.info(f"{cl_tag}Step {self.completed_steps}: {metrics}")
 
     def _log_cl_config(self, num_tasks, steps_per_task):
-        if self.accelerator.is_main_process:
-            logger.info("***** Continual Learning Configuration *****")
-            logger.info(f"  Task sequence: {self.cl_cfg.task_sequence}")
-            logger.info(f"  Number of tasks: {num_tasks}")
-            logger.info(f"  Steps per task: {steps_per_task}")
-            logger.info(f"  Total steps: {num_tasks * steps_per_task}")
-            logger.info(f"  LoRA enabled: {self.use_lora}")
-            if self.use_lora:
-                lora_cfg = self.config.get("lora", {})
-                logger.info(f"  LoRA rank: {lora_cfg.get('rank', 32)}, alpha: {lora_cfg.get('alpha', 16)}")
-            logger.info(f"  Replay enabled: {self.replay_enabled}")
-            if self.replay_enabled:
-                logger.info(f"  Replay buffer size/task: {self.replay_buffer.buffer_size_per_task}")
-                logger.info(f"  Replay batch ratio: {self.replay_batch_ratio}")
+        if not self.accelerator.is_main_process:
+            return
+
+        algo_name = self.cl_algorithm.name if self.cl_algorithm is not None else "NONE"
+        bar = "═" * 72
+        logger.info(bar)
+        logger.info(f"  Continual Learning Configuration · CL METHOD = {algo_name}")
+        logger.info(bar)
+        logger.info(f"  Task sequence       : {self.cl_cfg.task_sequence}")
+        logger.info(f"  Number of tasks     : {num_tasks}")
+        logger.info(f"  Steps per task      : {steps_per_task}")
+        logger.info(f"  Total steps         : {num_tasks * steps_per_task}")
+        logger.info(f"  LoRA enabled        : {self.use_lora}")
+        if self.use_lora:
+            lora_cfg = self.config.get("lora", {})
+            logger.info(
+                f"  LoRA rank / alpha   : {lora_cfg.get('rank', 32)} / "
+                f"{lora_cfg.get('alpha', 16)}"
+            )
+        if self.cl_algorithm is not None:
+            logger.info(f"  CL algorithm        : {algo_name}")
+            logger.info(f"  Algorithm params    :")
+            for k, v in self.cl_algorithm.describe().items():
+                if k == "algorithm":
+                    continue
+                logger.info(f"    {k:<22s}: {v}")
+        else:
+            logger.info("  CL algorithm        : (none — plain sequential baseline)")
+        logger.info(bar)
 
     def _finalize_training(self):
         if self.accelerator.is_main_process:
@@ -569,7 +630,22 @@ class ContinualVLATrainer(TrainerUtils):
 # ============================================================================
 
 def main(cfg) -> None:
-    logger.info("==== Continual Learning VLA Training — Warming Up ====")
+    # Peek at the CL method before wrapping the config so the very first
+    # log line tells you which algorithm this run uses.
+    _cl_block = cfg.get("continual_learning", {}) if hasattr(cfg, "get") else {}
+    _replay = _cl_block.get("replay", None) if hasattr(_cl_block, "get") else None
+    _algo = _cl_block.get("algorithm", None) if hasattr(_cl_block, "get") else None
+    if _replay is not None and _replay.get("enabled", False):
+        _m = _replay.get("method", "experience_replay")
+        _cl_method = "ER" if _m == "experience_replay" else str(_m).upper()
+    elif _algo is not None and _algo.get("name", None) is not None:
+        _cl_method = str(_algo.get("name")).upper()
+    else:
+        _cl_method = "NONE (plain sequential)"
+    logger.info(
+        f"==== Continual Learning VLA Training — Warming Up "
+        f"(CL method = {_cl_method}) ===="
+    )
 
     cfg = wrap_config(cfg)
 
@@ -600,15 +676,29 @@ def main(cfg) -> None:
     t0 = time.time()
     full_dataset = build_full_dataset(cfg)
 
-    if hasattr(full_dataset, 'datasets'):
-        base_ds = full_dataset.datasets[0]
+    # CL task-partitioning strategy depends on the sequence.
+    #   by_task_index: LIBERO-style (one parquet, task_index column).
+    #   by_dataset:    Robocasa-style (each sub-dataset is one CL task).
+    seq_cfg = get_task_sequence(cfg.continual_learning.task_sequence)
+    task_stream_mode = seq_cfg.get("task_stream_mode", "by_task_index")
+    if task_stream_mode == "by_dataset":
+        episode_task_map = build_dataset_task_map(full_dataset)
+    elif task_stream_mode == "by_task_index":
+        base_ds = full_dataset.datasets[0] if hasattr(full_dataset, "datasets") else full_dataset
+        episode_task_map = build_episode_task_map(base_ds)
     else:
-        base_ds = full_dataset
-    episode_task_map = build_episode_task_map(base_ds)
+        raise ValueError(
+            f"Unknown task_stream_mode={task_stream_mode!r} in CL sequence "
+            f"{cfg.continual_learning.task_sequence!r}; expected "
+            f"'by_task_index' or 'by_dataset'."
+        )
     n_eps = sum(len(v) for v in episode_task_map.values())
     n_tasks_in_data = len(episode_task_map)
-    logger.info(f"      → dataset built in {time.time()-t0:.1f}s · "
-                f"{n_eps} episodes across {n_tasks_in_data} tasks")
+    logger.info(
+        f"      → dataset built in {time.time()-t0:.1f}s · "
+        f"{n_eps} episodes across {n_tasks_in_data} tasks "
+        f"(task_stream_mode={task_stream_mode})"
+    )
 
     # ── Build optimizer ─────────────────────────────────────────────────
     logger.info(f"[4/6] Building AdamW optimizer (base lr={cfg.trainer.learning_rate.base})...")
@@ -646,12 +736,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config_yaml",
         type=str,
+        nargs="+",
         required=True,
-        help="Path to YAML config with continual_learning section",
+        help=(
+            "One or more YAML config paths merged left-to-right (later files "
+            "override earlier ones).  Single-file usage is unchanged.  "
+            "Composable usage: --config_yaml cl_base.yaml models/qwengr00t.yaml"
+        ),
     )
     args, clipargs = parser.parse_known_args()
 
-    cfg = OmegaConf.load(args.config_yaml)
+    cfg = OmegaConf.load(args.config_yaml[0])
+    for _extra_yaml in args.config_yaml[1:]:
+        cfg = OmegaConf.merge(cfg, OmegaConf.load(_extra_yaml))
     dotlist = normalize_dotlist_args(clipargs)
     cli_cfg = OmegaConf.from_dotlist(dotlist)
     cfg = OmegaConf.merge(cfg, cli_cfg)

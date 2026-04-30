@@ -1,0 +1,60 @@
+# =============================================================================
+# Model overlay: NeuroVLA (~3 B — Qwen2.5-VL-3B + Q-Former + SNN head)
+# Merge over cl_base.yaml — overrides model-specific keys.
+# Notable differences vs QwenGR00T:
+#   - action_type: delta_ee (end-effector, not joint angles)
+#   - include_state: true (proprioceptive state fed to action head)
+#   - steps_per_task: 5000 (fewer steps; model converges faster)
+#   - max_train_steps: 50000 (10 tasks × 5000)
+#   - LoRA freeze_extra_modules: qformer and edit_model frozen, full-param
+# =============================================================================
+
+framework:
+  name: NeuroVLA
+  qwenvl:
+    base_vlm: ${oc.env:PRETRAINED_MODELS_DIR}/Qwen2.5-VL-3B-Instruct
+    attn_implementation: sdpa
+    vl_hidden_dim: 2048
+  layer_qformer:
+    qformer_end_layer: 37
+    qformer_start_layer: 36
+    num_query_tokens: 8
+    input_dim: 2048
+    ouptput_dim: 768
+    grad_scale: 0.5
+  action_model:
+    hidden_size: 1024
+    add_pos_embed: true
+    max_seq_len: 1024
+    action_dim: 7
+    state_dim: 7
+    future_action_window_size: 15
+    action_horizon: 16
+    past_action_window_size: 0
+    repeated_diffusion_steps: 8
+  reduce_in_full_precision: true
+
+
+datasets:
+  vla_data:
+    action_type: delta_ee
+    include_state: true
+    CoT_prompt: "Your task is {instruction}. To identify the key objects for your task. Locate their bounding boxes in [x1,y1,x2,y2] format."
+    CoT_answer: bbox
+
+
+continual_learning:
+  steps_per_task: 5000
+
+
+lora:
+  freeze_extra_modules: "layer_qformer,edit_model"
+
+
+trainer:
+  max_train_steps: 50000
+  learning_rate:
+    qwen_vl_interface: 1.0e-05
+    layer_qformer: 5.0e-05
+    action_model: 1.0e-04
+    edit_model: 5.0e-05

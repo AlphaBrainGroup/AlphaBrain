@@ -1,0 +1,53 @@
+# =============================================================================
+# Model overlay: QwenGR00T-3B (Qwen2.5-VL-3B + Flow-Matching DiT-B head)
+# Merge over cl_base.yaml — adds/overrides only model-specific keys.
+# =============================================================================
+
+framework:
+  name: QwenGR00T
+  qwenvl:
+    base_vlm: ${oc.env:PRETRAINED_MODELS_DIR}/Qwen2.5-VL-3B-Instruct
+    attn_implementation: flash_attention_2
+    vl_hidden_dim: 2048
+  dino:
+    dino_backbone: dinov2_vits14
+  action_model:
+    action_model_type: DiT-B
+    action_hidden_dim: 1024
+    hidden_size: 1024
+    add_pos_embed: True
+    max_seq_len: 1024
+    action_dim: 7
+    state_dim: 7
+    future_action_window_size: 7
+    action_horizon: 8
+    past_action_window_size: 0
+    repeated_diffusion_steps: 8
+    noise_beta_alpha: 1.5
+    noise_beta_beta: 1.0
+    noise_s: 0.999
+    num_timestep_buckets: 1000
+    num_inference_timesteps: 4
+    num_target_vision_tokens: 32
+    diffusion_model_cfg:
+      cross_attention_dim: 2048
+      dropout: 0.2
+      final_dropout: true
+      interleave_self_attention: true
+      norm_type: "ada_norm"
+      num_layers: 16
+      output_dim: 1024
+      positional_embeddings: null
+  reduce_in_full_precision: true
+
+
+datasets:
+  vla_data:
+    CoT_prompt: "Your task is {instruction}. To identify the key objects for your task. Locate their bounding boxes in [x1,y1,x2,y2] format."
+    CoT_answer: bbox
+
+
+trainer:
+  learning_rate:
+    qwen_vl_interface: 1.0e-05
+    action_model: 1.0e-04

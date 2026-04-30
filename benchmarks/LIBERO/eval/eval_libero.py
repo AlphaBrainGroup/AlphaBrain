@@ -80,6 +80,7 @@ class Args:
     task_suite_name: str = "libero_goal"  # Task suite. Options: libero_spatial, libero_object, libero_goal, libero_10, libero_90
     num_steps_wait: int = 10  # Number of steps to wait for objects to stabilize i n sim
     num_trials_per_task: int = 10  # Number of rollouts per task
+    task_ids: str = ""  # Optional comma-separated suite task IDs to evaluate (e.g. "4" or "0,4,7"); empty = all
 
 
     #################################################################################################################
@@ -143,7 +144,14 @@ def eval_libero(args: Args) -> None:
 
     # Start evaluation
     total_episodes, total_successes = 0, 0
+    filter_ids = (
+        {int(x) for x in args.task_ids.split(",") if x.strip() != ""}
+        if args.task_ids
+        else None
+    )
     for task_id in tqdm.tqdm(range(num_tasks_in_suite)):
+        if filter_ids is not None and task_id not in filter_ids:
+            continue
         # Get task
         task = task_suite.get_task(task_id)
 

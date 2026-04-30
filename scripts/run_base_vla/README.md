@@ -34,8 +34,9 @@ Unified training & evaluation pipeline for the three base VLA frameworks in Alph
 | OpenPi Pi05 (official) | PaliGemma 3B | Flow Matching 300M | 30k | multi-task | full ema | 256 | - | **98.0** | **98.8** | **98.2** | **92.4** |
 | AlphaBrain+PaliGemmaPi05 (pretrained) | PaliGemma 3B | Flow Matching 300M | 22k | multi-task | None | 32 | 2 | 97.8 | 99.0 | 98.0 | 93.2 |
 | AlphaBrain+PaliGemmaPi05 (no finetune) | PaliGemma 3B | Flow Matching 300M | - | - | - | - | - | 0 | 0 | 0 | 0 |
+| **AlphaBrain+PaliGemmaOFT_v2** | PaliGemma 3B | DiT-B regression | 20k / 30k | multi-task | - | 128 | 1 | **95.8** | **95.0** | **97.8** | **83.2** |
 | LlamaOFT | Llama 11B | MLP | 30k | multi-task | - | 128 | 1 | 92.4 | 94.0 | 99.4 | 88.6 |
-| PaliGemmaOFT | PaliGemma 3B | MLP | 30k | single-task | - | 128 | 1 | 95.8% | 95.4 | 99.0 | 86.6 |
+| PaliGemmaOFT | PaliGemma 3B | MLP | 30k | single-task | - | 128 | 1 | 95.8 | 95.4 | 99.0 | 86.6 |
 
 ---
 

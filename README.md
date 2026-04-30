@@ -68,7 +68,7 @@ AlphaBrain delivers five core capabilities on a single stack: the **VLA framewor
 | **OFT** | MLP action head, parallel continuous decoding | Fast prototyping, baseline alignment |
 | **GR00T** | System1 + Flow-Matching DiT System2 | High-precision manipulation, long-horizon planning |
 | **PI** | Flow-Matching action prediction | Diffusion-style policies |
-| **Adapter** | Lightweight Adapter decoding | Parameter-efficient fine-tuning |
+| **LoRA Adapter** | Rank-32 adapters on all-linear layers, applied to all supported frameworks | Parameter-efficient fine-tuning |
 | **NeuroVLA** | Bio-inspired spiking + STDP | Brain-inspired control |
 | **CosmosPolicy** | Latent-space video diffusion | World-model-native policy |
 
@@ -90,12 +90,26 @@ A novel architecture that compresses VLA hidden states through an information bo
 
 ### Continual Learning
 
-Experience-replay-based continual learning for sequential task acquisition:
+Sequential task acquisition with a pluggable family of CL algorithms,
+selectable from YAML — no code edits needed to switch methods:
 
-- **Incremental design** — all changes are additive, no modification to base training code;
-- **LoRA integration** — parameter-efficient fine-tuning (~6% trainable params, ~3× memory savings);
-- **Replay buffer** with configurable per-task capacity;
-- **Cross-architecture adaptation** — the same CL algorithm drops directly onto different VLA frameworks.
+- **Algorithms** — `ER` (Experience Replay) and `MIR` (Maximally Interfered
+  Retrieval, NeurIPS 2019) ship in-tree; both inherit a common
+  `CLAlgorithm` hook interface (`observe`, `modify_batch`,
+  `compute_penalty`, `after_backward`, `on_task_start`, `on_task_end`).
+- **Benchmarks** — `LIBERO-{Spatial,Object,Goal,Long}` ship as
+  first-class CL streams; arbitrary LeRobot-format mixtures supported
+  via YAML.
+- **Metrics** — one-command aggregator emits **ASR / BWT (Lopez-Paz &
+  Ranzato 2017) / F (Chaudhry et al. 2018)** from a T×T evaluation
+  matrix: `python scripts/run_continual_learning_scripts/compute_cl_matrix_metrics.py <matrix_dir>`.
+- **LoRA integration** — parameter-efficient fine-tuning (~6% trainable
+  params, ~3× memory savings); full-parameter variants also supported.
+- **Cross-architecture adaptation** — the same CL algorithm drops
+  directly onto QwenGR00T, NeuroVLA, LlamaOFT, PaliGemmaOFT, etc.
+
+Detailed quickstart, leaderboard, CLI flags, and the 77 % MIR-on-LIBERO-Goal
+recipe: [`scripts/run_continual_learning_scripts/README.md`](scripts/run_continual_learning_scripts/README.md).
 
 ### World Model Integration
 

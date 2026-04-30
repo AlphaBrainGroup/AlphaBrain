@@ -445,6 +445,17 @@ modes:
     gpu_id: 0
     use_bf16: true
 
+  # CL run eval: Pi0.5 + ER on libero_goal — step 5000 of task_0 training
+  paligemma_pi0_cl_step5000_eval:
+    type: "eval"
+    checkpoint: "./results/Checkpoints/paligemma_pi0_er_libero_goal_v1/checkpoints/steps_5000_pytorch_model.pt"
+    task_suite: "libero_goal"
+    num_trials: 10
+    host: "127.0.0.1"
+    port: 5795
+    gpu_id: 7
+    use_bf16: true
+
   # --------------------------------------------------------------------------
   # BS128 v2 (lr scaled) eval — libero_10
   paligemma_oft_bs128v2_15k_eval:

@@ -2,20 +2,31 @@
 # =============================================================================
 # Continual Learning Matrix Evaluation — one-command, self-contained.
 #
-# Evaluates every task_*_... checkpoint in a CL run directory on all 10 LIBERO
-# tasks, building the 10×10 success-rate matrix. Auto-detects LoRA (runs
-# adapter+action_model merge first). Parallelizes across --gpus.
+# Evaluates every task_*_... checkpoint in a CL run directory across the full
+# task suite, building the T×T success-rate matrix.  Auto-detects LoRA (runs
+# adapter + action_model merge first) and parallelises across --gpus.
+#
+# Two benchmarks via --benchmark (default: libero):
+#   libero    : LIBERO-Goal / Spatial / Object / Long (10 tasks each).
+#   robocasa  : Robocasa-atomic10 (10 atomic kitchen tasks).
 #
 # Usage (from repo root):
-#   # Full-param run (no LoRA merge needed)
+#   # LIBERO LoRA run — just pass --model <name>, configs expand automatically
 #   bash scripts/run_continual_learning_scripts/run_cl_eval.sh \
-#       --run-id neurovla_cl_libero_goal_v1 --gpus 0
+#       --run-id qwengr00t_mir_libero_goal \
+#       --model qwengr00t \
+#       --gpus 0,1 --suite libero_goal --trials 50 --last-only
 #
-#   # LoRA run (supply --base-config)
+#   # LIBERO full-param run (omit --model; no adapter merge needed)
 #   bash scripts/run_continual_learning_scripts/run_cl_eval.sh \
-#       --run-id alphabrain_cl_lora_libero_goal_v1 \
-#       --base-config configs/continual_learning/qwengr00t_cl_lora_libero.yaml \
-#       --gpus 0,1
+#       --run-id neurovla_er_libero_goal --gpus 0
+#
+#   # Robocasa-atomic10 LoRA run (50 episodes/task on the pretrain split)
+#   bash scripts/run_continual_learning_scripts/run_cl_eval.sh \
+#       --benchmark robocasa \
+#       --run-id qwengr00t_er_robocasa_atomic10 \
+#       --model qwengr00t \
+#       --gpus 0 --n-episodes 50 --last-only
 # =============================================================================
 set -euo pipefail
 
@@ -25,14 +36,35 @@ cd "$REPO_ROOT"
 
 # ---------- defaults ----------
 RUN_ID=""
-BASE_CONFIG=""
+MODEL=""          # model name: qwengr00t | neurovla | llamaoft | paligemma
 GPUS="0"
+BENCHMARK="libero"            # libero | robocasa
+# LIBERO knobs
 SUITE="libero_goal"
 TRIALS=10
+# Robocasa knobs
+N_EPISODES=20
+N_ENVS=1
+N_ACTION_STEPS=16
+SPLIT="${ROBOCASA_EVAL_SPLIT:-pretrain}"
 PORT_BASE=5694
 OUTPUT_BASE=""
 LAST_ONLY=0
 EXTRA=()
+
+# Robocasa-atomic10 task list (mirrors mixtures.py:170 — 10 atomic envs in CL training order)
+ROBOCASA_TASK_LIST=(
+    "NavigateKitchen"
+    "OpenDrawer"
+    "OpenCabinet"
+    "CloseFridge"
+    "CloseBlenderLid"
+    "CoffeeSetupMug"
+    "PickPlaceCounterToCabinet"
+    "PickPlaceSinkToCounter"
+    "TurnOnMicrowave"
+    "TurnOffStove"
+)
 
 # ---------- parse CLI ----------
 usage() {
@@ -43,55 +75,75 @@ Required:
   --run-id ID           Run directory name under results/Checkpoints/
 
 Common:
-  --base-config PATH    LoRA merge base config (required when ckpts contain *_lora_adapter)
-                        e.g. configs/continual_learning/qwengr00t_cl_lora_libero.yaml
+  --benchmark NAME      libero | robocasa (default libero)
+  --model NAME          Model name for LoRA runs: qwengr00t | neurovla | llamaoft | paligemma
+                        Auto-expands to cl_base.yaml + models/<name>.yaml for adapter merge.
+                        Omit for full-param runs (no LoRA adapter to merge).
   --gpus LIST           Comma-separated GPU list (default "0"; "0,1" parallel, "1,2,3" etc.)
-  --suite NAME          libero_goal|libero_spatial|libero_object|libero_10 (default libero_goal)
-  --trials N            Trials per task (default 10)
   --port-base N         Starting port (default 5694)
   --output-base PATH    Eval results root (default results/eval_cl/<RUN_ID>)
   --last-only           Only evaluate the final task_* checkpoint (quick sanity)
   --                    Pass-through args (appended to server_policy.py)
   -h, --help            Show this help
 
-Typical modes (run-id → base-config mapping for LoRA runs):
-  RUN_ID                                      | BASE_CONFIG
-  alphabrain_cl_lora_libero_goal_v1 (5d)      | configs/continual_learning/qwengr00t_cl_lora_libero.yaml
-  neurovla_cl_lora_er_5k (5h)                 | configs/continual_learning/neurovla_cl_lora_libero.yaml
-  llamaoft_cl_lora_er_libero_goal_5k (5l)     | configs/continual_learning/llamaoft_cl_lora_libero.yaml
-  neurovla_cl_libero_goal_v1 (5f, full-param) | (omit --base-config — no LoRA merge)
+LIBERO-specific (--benchmark libero):
+  --suite NAME          libero_goal|libero_spatial|libero_object|libero_10 (default libero_goal)
+  --trials N            Trials per task (default 10; production = 50)
+
+Robocasa-specific (--benchmark robocasa):
+  --n-episodes N        Rollouts per task (default 20; production = 50)
+  --split NAME          pretrain | target (default pretrain — matches training distribution)
+  --n-envs N            Vectorized envs per task (default 1)
+  --n-action-steps N    Action chunk size returned per server call (default 16)
+
+--model quick reference:
+  QwenGR00T runs   | --model qwengr00t
+  NeuroVLA runs    | --model neurovla
+  LlamaOFT runs    | --model llamaoft
+  PaliGemma runs   | --model paligemma
+  Full-param runs  | omit --model (no adapter merge needed)
 
 Examples:
-  # 5d full matrix, 2 GPU
-  bash $0 --run-id alphabrain_cl_lora_libero_goal_v1 \\
-          --base-config configs/continual_learning/qwengr00t_cl_lora_libero.yaml \\
-          --gpus 0,1
+  # LIBERO-Goal QwenGR00T LoRA + MIR — full 10×10 matrix, 2 GPU, 50 trials
+  bash $0 --run-id qwengr00t_mir_libero_goal \\
+          --model qwengr00t --gpus 0,1 --trials 50
 
-  # 5f (full-param) single GPU
-  bash $0 --run-id neurovla_cl_libero_goal_v1 --gpus 1
+  # LIBERO-Long ER quick sanity check (last ckpt only)
+  bash $0 --run-id qwengr00t_er_libero_long \\
+          --model qwengr00t --suite libero_10 --gpus 0 --trials 10 --last-only
 
-  # Custom trial count
-  bash $0 --run-id alphabrain_cl_lora_libero_goal_v1 \\
-          --base-config configs/continual_learning/qwengr00t_cl_lora_libero.yaml \\
-          --gpus 0,1 --trials 50
+  # Robocasa-atomic10 final-ckpt eval (50 episodes × 10 tasks)
+  bash $0 --benchmark robocasa \\
+          --run-id qwengr00t_er_robocasa_atomic10 \\
+          --model qwengr00t --gpus 0 --n-episodes 50 --last-only
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --run-id)        RUN_ID="$2"; shift 2 ;;
-        --base-config)   BASE_CONFIG="$2"; shift 2 ;;
-        --gpus)          GPUS="$2"; shift 2 ;;
-        --suite)         SUITE="$2"; shift 2 ;;
-        --trials)        TRIALS="$2"; shift 2 ;;
-        --port-base)     PORT_BASE="$2"; shift 2 ;;
-        --output-base)   OUTPUT_BASE="$2"; shift 2 ;;
-        --last-only)     LAST_ONLY=1; shift ;;
-        -h|--help)       usage; exit 0 ;;
-        --)              shift; EXTRA=("$@"); break ;;
-        *)               echo "[error] Unknown arg: $1"; usage; exit 1 ;;
+        --run-id)         RUN_ID="$2"; shift 2 ;;
+        --model)          MODEL="$2"; shift 2 ;;
+        --gpus)           GPUS="$2"; shift 2 ;;
+        --benchmark)      BENCHMARK="$2"; shift 2 ;;
+        --suite)          SUITE="$2"; shift 2 ;;
+        --trials)         TRIALS="$2"; shift 2 ;;
+        --n-episodes)     N_EPISODES="$2"; shift 2 ;;
+        --n-envs)         N_ENVS="$2"; shift 2 ;;
+        --n-action-steps) N_ACTION_STEPS="$2"; shift 2 ;;
+        --split)          SPLIT="$2"; shift 2 ;;
+        --port-base)      PORT_BASE="$2"; shift 2 ;;
+        --output-base)    OUTPUT_BASE="$2"; shift 2 ;;
+        --last-only)      LAST_ONLY=1; shift ;;
+        -h|--help)        usage; exit 0 ;;
+        --)               shift; EXTRA=("$@"); break ;;
+        *)                echo "[error] Unknown arg: $1"; usage; exit 1 ;;
     esac
 done
+
+case "$BENCHMARK" in
+    libero|robocasa) ;;
+    *) echo "[error] --benchmark must be 'libero' or 'robocasa', got '$BENCHMARK'"; exit 1 ;;
+esac
 
 [ -n "$RUN_ID" ] || { echo "[error] --run-id is required"; usage; exit 1; }
 
@@ -118,15 +170,16 @@ list_available_runs() {
             found=$((found+1))
             local kind base_yaml
             if [ "$n_lora" -gt 0 ]; then
-                kind="LoRA  (need --base-config)"
-                # try to guess base config from run_id prefix
+                kind="LoRA  (need --model)"
+                # guess model name from run_id prefix
                 case "$run" in
-                    *qwen*|alphabrain*)         base_yaml="configs/continual_learning/qwengr00t_cl_lora_libero.yaml" ;;
-                    *neurovla*lora*|*neurovla_cl_lora*)          base_yaml="configs/continual_learning/neurovla_cl_lora_libero.yaml" ;;
-                    *llama*lora*|*llamaoft_cl_lora*)             base_yaml="configs/continual_learning/llamaoft_cl_lora_libero.yaml" ;;
-                    *) base_yaml="<pick matching configs/continual_learning/*.yaml>" ;;
+                    *qwen*|alphabrain*) model_hint="--model qwengr00t" ;;
+                    *neurovla*)        model_hint="--model neurovla" ;;
+                    *llama*)           model_hint="--model llamaoft" ;;
+                    *paligemma*)       model_hint="--model paligemma" ;;
+                    *)                 model_hint="--model <name>" ;;
                 esac
-                printf "  %-50s %-25s %2d ckpts   --base-config %s\n" "$run" "$kind" "$n_lora" "$base_yaml"
+                printf "  %-50s %-20s %2d ckpts   %s\n" "$run" "$kind" "$n_lora" "$model_hint"
             else
                 kind="Full-param"
                 printf "  %-50s %-25s %2d ckpts\n" "$run" "$kind" "$n_pt"
@@ -162,25 +215,18 @@ if [ -f "$REPO_ROOT/.env" ]; then
 fi
 
 # ---------- pick Python interpreters ----------
-# SERVER_PYTHON — alphabrain env (has torch + flash-attn, NO robosuite)
-# EVAL_PYTHON   — robosuite env (has robosuite, MuJoCo, LIBERO client deps)
-#
-# .env's LIBERO_PYTHON is often misconfigured (points to alphabrain which lacks
-# robosuite). We probe LIBERO_PYTHON for robosuite; if it's missing we fall
-# back to the conventional vlacl_engine_eval env.
+# SERVER_PYTHON — alphabrain env (has torch + flash-attn) — runs the policy server
+# EVAL_PYTHON   — benchmark-specific simulator env, holds the eval client
+#                  - libero  → LIBERO_PYTHON (vlacl_engine_eval, has robosuite + LIBERO)
+#                  - robocasa → ROBOCASA365_PYTHON (zhaoyiren's robocasa env via wrapper)
 SERVER_PYTHON="${SERVER_PYTHON:-${ALPHABRAIN_PYTHON:-python}}"
-EVAL_PYTHON="${EVAL_PYTHON:-${LIBERO_PYTHON:-python}}"
 
 _has_mods() {
-    # usage: _has_mods <python> <mod1> <mod2> ...
     local py="$1"; shift
     "$py" -c "$(printf 'import %s\n' "$@")" >/dev/null 2>&1
 }
 
-# SERVER_PYTHON needs torch (VLM inference) AND websockets (policy server IPC).
-# Common failure: user's shell python is /opt/conda/bin/python (base env) which
-# has torch but no websockets — passes a torch-only check but crashes at server
-# startup. So we probe both.
+# SERVER_PYTHON needs torch + websockets.
 if ! _has_mods "$SERVER_PYTHON" torch websockets; then
     FALLBACK="${ALPHABRAIN_PYTHON_FALLBACK:-/path/to/envs/alphabrain/bin/python}"
     if _has_mods "$FALLBACK" torch websockets; then
@@ -193,33 +239,52 @@ if ! _has_mods "$SERVER_PYTHON" torch websockets; then
     fi
 fi
 
-# EVAL_PYTHON must have robosuite (LIBERO client)
-if ! _has_mods "$EVAL_PYTHON" robosuite; then
-    FALLBACK="${EVAL_PYTHON_FALLBACK:-/path/to/envs/vlacl_engine_eval/bin/python}"
-    if _has_mods "$FALLBACK" robosuite; then
-        echo "[warn] EVAL_PYTHON='$EVAL_PYTHON' lacks robosuite → falling back to $FALLBACK"
-        EVAL_PYTHON="$FALLBACK"
-    else
-        echo "[error] No robosuite found in EVAL_PYTHON='$EVAL_PYTHON' nor fallback '$FALLBACK'."
-        echo "        Set LIBERO_PYTHON in .env to an env with robosuite (e.g. vlacl_engine_eval)."
+if [ "$BENCHMARK" = "libero" ]; then
+    EVAL_PYTHON="${EVAL_PYTHON:-${LIBERO_PYTHON:-python}}"
+    if ! _has_mods "$EVAL_PYTHON" robosuite; then
+        FALLBACK="${EVAL_PYTHON_FALLBACK:-/path/to/envs/vlacl_engine_eval/bin/python}"
+        if _has_mods "$FALLBACK" robosuite; then
+            echo "[warn] EVAL_PYTHON='$EVAL_PYTHON' lacks robosuite → falling back to $FALLBACK"
+            EVAL_PYTHON="$FALLBACK"
+        else
+            echo "[error] No robosuite found in EVAL_PYTHON='$EVAL_PYTHON' nor fallback '$FALLBACK'."
+            echo "        Set LIBERO_PYTHON in .env to an env with robosuite."
+            exit 1
+        fi
+    fi
+    : "${LIBERO_HOME:=../LIBERO}"
+    export LIBERO_HOME LIBERO_CONFIG_PATH="${LIBERO_HOME}/libero"
+    export PYTHONPATH="${REPO_ROOT}:${LIBERO_HOME}${PYTHONPATH:+:${PYTHONPATH}}"
+    export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-/usr/share/glvnd/egl_vendor.d/10_nvidia.json}"
+    export MUJOCO_GL="${MUJOCO_GL:-egl}"
+else
+    # robocasa: use the wrapper that sets LD_LIBRARY_PATH for render libs
+    EVAL_PYTHON="${ROBOCASA365_PYTHON:-}"
+    if [ -z "$EVAL_PYTHON" ] || [ ! -x "$EVAL_PYTHON" ]; then
+        echo "[error] --benchmark robocasa requires ROBOCASA365_PYTHON in .env"
+        echo "        Set ROBOCASA365_PYTHON=<robocasa wrapper or python>"
         exit 1
     fi
+    if ! "$EVAL_PYTHON" -c "import robocasa, robosuite" 2>/dev/null; then
+        echo "[error] ROBOCASA365_PYTHON cannot import robocasa + robosuite."
+        echo "        See benchmarks/Robocasa365/README.md for setup."
+        exit 1
+    fi
+    # Server side needs in-tree imports (AlphaBrain + benchmarks/)
+    export PYTHONPATH="${REPO_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
 fi
-
-# ---------- env for LIBERO client ----------
-: "${LIBERO_HOME:=../LIBERO}"
-export LIBERO_HOME
-export LIBERO_CONFIG_PATH="${LIBERO_HOME}/libero"
-export PYTHONPATH="${REPO_ROOT}:${LIBERO_HOME}${PYTHONPATH:+:${PYTHONPATH}}"
-export __EGL_VENDOR_LIBRARY_FILENAMES="${__EGL_VENDOR_LIBRARY_FILENAMES:-/usr/share/glvnd/egl_vendor.d/10_nvidia.json}"
-export MUJOCO_GL="${MUJOCO_GL:-egl}"
 
 # ---------- resolve checkpoints + LoRA detection ----------
 IS_LORA=false
 CHECKPOINTS=()
 if compgen -G "$CKPT_SUB/task_*_lora_adapter" > /dev/null; then
     IS_LORA=true
-    [ -n "$BASE_CONFIG" ] || { echo "[error] LoRA detected; --base-config is required"; exit 1; }
+    [ -n "$MODEL" ] || { echo "[error] LoRA detected; --model is required (e.g. --model qwengr00t)"; exit 1; }
+    BASE_CONFIGS=(
+        "$REPO_ROOT/configs/continual_learning/cl_base.yaml"
+        "$REPO_ROOT/configs/continual_learning/models/${MODEL}.yaml"
+    )
+    [ -f "${BASE_CONFIGS[1]}" ] || { echo "[error] Model config not found: ${BASE_CONFIGS[1]}"; exit 1; }
     while IFS= read -r p; do
         name=$(basename "$p")
         CHECKPOINTS+=("${name%_lora_adapter}")
@@ -268,10 +333,15 @@ _rule
 printf "  ${CT}▶  Continual Learning Matrix Evaluation${C0}\n"
 _rule
 _kv "RunID"       "${CH}${RUN_ID}${C0}"
+_kv "Benchmark"   "${CV}${BENCHMARK}${C0}"
 _kv "LoRA"        "${LORA_STR}"
 _kv "Checkpoints" "${CG}${#CHECKPOINTS[@]}${C0}"
 _kv "GPUs"        "${CG}${GPUS}${C0}  ${CD}(${NUM_GPU} parallel, port-base ${PORT_BASE})${C0}"
-_kv "Suite"       "${CV}${SUITE}${C0}  ${CD}(${TRIALS} trials/task)${C0}"
+if [ "$BENCHMARK" = "libero" ]; then
+    _kv "Suite"   "${CV}${SUITE}${C0}  ${CD}(${TRIALS} trials/task)${C0}"
+else
+    _kv "Stream"  "${CV}robocasa-atomic10${C0}  ${CD}(${#ROBOCASA_TASK_LIST[@]} tasks × ${N_EPISODES} ep, split=${SPLIT})${C0}"
+fi
 _kv "Server py"   "${CM}${SERVER_PYTHON}${C0}"
 _kv "Eval py"     "${CM}${EVAL_PYTHON}${C0}"
 _kv "Output"      "${CV}${OUTPUT_BASE#$REPO_ROOT/}${C0}"
@@ -290,7 +360,7 @@ merge_single() {
     printf "%b ${CG}GPU%s${C0} ${CM}merging${C0}: ${CV}%s${C0}\n" "$ts" "$gpu" "$name"
     CUDA_VISIBLE_DEVICES=$gpu "$SERVER_PYTHON" -m \
         AlphaBrain.training.trainer_utils.peft.merge_lora_checkpoint \
-        --base_config "$BASE_CONFIG" \
+        --base_config "${BASE_CONFIGS[@]}" \
         --lora_adapter_dir "$CKPT_SUB/${name}_lora_adapter" \
         --action_model_pt  "$CKPT_SUB/${name}_action_model.pt" \
         --output_path      "$merged"
@@ -373,45 +443,71 @@ run_eval_single() {
     local filter_awk='
         /Task: / || /Starting episode/ || /Success: / ||
         /Current task success rate/ || /Current total success rate/ ||
-        /Total success rate/ || /Traceback/ {
+        /Total success rate/ || /Traceback/ ||
+        /Running simulation/ || /EP [0-9]+ success/ || /Results for/ ||
+        /Saved aggregate/ || /cumulative=/ {
             printf "%s[GPU%s]%s %s\n", cg, gpu, c0, $0
             fflush()
         }'
-    "$EVAL_PYTHON" "$REPO_ROOT/benchmarks/LIBERO/eval/eval_libero.py" \
-        --args.pretrained-path "$ckpt" \
-        --args.host 127.0.0.1 --args.port "$port" \
-        --args.task-suite-name "$SUITE" \
-        --args.num-trials-per-task "$TRIALS" \
-        --args.video-out-path "$out_dir/videos" \
-        2>&1 \
-        | tee "$out_dir/eval.log" \
-        | awk -v gpu="$gpu" -v cg="$CG" -v c0="$C0" "$filter_awk"
+
+    if [ "$BENCHMARK" = "libero" ]; then
+        "$EVAL_PYTHON" "$REPO_ROOT/benchmarks/LIBERO/eval/eval_libero.py" \
+            --args.pretrained-path "$ckpt" \
+            --args.host 127.0.0.1 --args.port "$port" \
+            --args.task-suite-name "$SUITE" \
+            --args.num-trials-per-task "$TRIALS" \
+            --args.video-out-path "$out_dir/videos" \
+            2>&1 \
+            | tee "$out_dir/eval.log" \
+            | awk -v gpu="$gpu" -v cg="$CG" -v c0="$C0" "$filter_awk"
+    else
+        local task_list_csv
+        task_list_csv="$(IFS=, ; echo "${ROBOCASA_TASK_LIST[*]}")"
+        "$EVAL_PYTHON" "$REPO_ROOT/benchmarks/Robocasa365/eval/simulation_env.py" \
+            --args.pretrained-path "$ckpt" \
+            --args.host 127.0.0.1 --args.port "$port" \
+            --args.task-list "$task_list_csv" \
+            --args.no-sort-tasks \
+            --args.n-episodes "$N_EPISODES" \
+            --args.n-envs "$N_ENVS" \
+            --args.n-action-steps "$N_ACTION_STEPS" \
+            --args.video-out-path "$out_dir" \
+            --args.split "$SPLIT" \
+            2>&1 \
+            | tee "$out_dir/eval.log" \
+            | awk -v gpu="$gpu" -v cg="$CG" -v c0="$C0" "$filter_awk"
+    fi
 
     local t5; t5="${CD}[$(date '+%H:%M:%S')]${C0} ${CG}GPU${gpu}${C0}"
     printf "%b ${CC}[3/3]${C0} killing server: ${CV}%s${C0}\n" "$t5" "$name"
     kill $server_pid 2>/dev/null; wait $server_pid 2>/dev/null || true
 
-    # Robosuite/MuJoCo sometimes emits NULs to stdout, tagging the log as binary.
-    # -a forces text mode; sed strips ANSI codes added by the client-side beautify.
+    # Aggregate parsing: LIBERO grep eval.log; Robocasa reads aggregate_stats.json
     local total pct col
-    # `head -N` closes the pipe early → upstream `grep -oE` can get SIGPIPE and
-    # exit non-zero, which with `set -euo pipefail` silently kills the whole
-    # script. `awk 'NR==1'` reads all input and still only prints line 1.
-    total=$(grep -a "Total success rate" "$out_dir/eval.log" \
-            | tail -1 \
-            | sed 's/\x1b\[[0-9;]*m//g' \
-            | grep -oE '[0-9]+(\.[0-9]+)?' | awk 'NR==1')
-    # color SR: green ≥0.45, yellow 0.25–0.45, red <0.25, dim '?' if missing
-    if [ -n "$total" ]; then
+    if [ "$BENCHMARK" = "libero" ]; then
+        # `awk 'NR==1'` reads all input and prints line 1 — avoids SIGPIPE killing
+        # upstream grep under `set -euo pipefail`.
+        total=$(grep -a "Total success rate" "$out_dir/eval.log" \
+                | tail -1 \
+                | sed 's/\x1b\[[0-9;]*m//g' \
+                | grep -oE '[0-9]+(\.[0-9]+)?' | awk 'NR==1')
+    else
+        local agg="$out_dir/$SPLIT/aggregate_stats.json"
+        if [ -f "$agg" ]; then
+            total=$("$SERVER_PYTHON" -c \
+                "import json; print(json.load(open('$agg'))['mean_success_rate'])" 2>/dev/null)
+        fi
+    fi
+    if [ -n "${total:-}" ]; then
         pct=$(awk -v t="$total" 'BEGIN{printf "%.1f", t*100}')
         if   awk -v t="$total" 'BEGIN{exit !(t>=0.45)}'; then col="$COK"
         elif awk -v t="$total" 'BEGIN{exit !(t>=0.25)}'; then col="$CWARN"
         else                                                   col="$CERR"; fi
         local t6; t6="${CD}[$(date '+%H:%M:%S')]${C0} ${CG}GPU${gpu}${C0}"
-        printf "%b ${COK}✓ done${C0}: ${CV}%s${C0}  ${CD}→${C0}  ${CB}Total SR: ${col}%s%% (%s)${C0}\n" "$t6" "$name" "$pct" "$total"
+        printf "%b ${COK}✓ done${C0}: ${CV}%s${C0}  ${CD}→${C0}  ${CB}Mean SR: ${col}%s%% (%s)${C0}\n" "$t6" "$name" "$pct" "$total"
     else
         local t6; t6="${CD}[$(date '+%H:%M:%S')]${C0} ${CG}GPU${gpu}${C0}"
-        printf "%b ${CWARN}⚠ done${C0}: ${CV}%s${C0}  ${CD}→${C0}  ${CWARN}Total SR: ?${C0} ${CD}(no line matched)${C0}\n" "$t6" "$name"
+        printf "%b ${CWARN}⚠ done${C0}: ${CV}%s${C0}  ${CD}→${C0}  ${CWARN}Mean SR: ?${C0} ${CD}(no aggregate matched)${C0}\n" "$t6" "$name"
     fi
 }
 

@@ -34,8 +34,7 @@ bash scripts/run_brain_inspired_scripts/run_stdp_finetune.sh \
 
 ```bash
 # baseline eval on libero_goal
-bash scripts/run_brain_inspired_scripts/run_eval_libero.sh \
-    --pretrained results/training/my_stdp_ft/checkpoints/steps_10000
+
 
 # all 4 suites, 50 trials per task
 bash scripts/run_brain_inspired_scripts/run_eval_libero.sh \
