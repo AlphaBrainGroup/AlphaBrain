@@ -182,13 +182,14 @@ T×T matrix eval (drop `--last-only`); the LIBERO-Long row is a 50-trial
 ```bash
 # 1. Train (~17 h on 4× A800 80 GB)
 bash scripts/run_continual_learning_scripts/run_cl_train.sh \
-    --yaml configs/continual_learning/qwengr00t_mir_lora_libero_refresh50.yaml \
-    --gpus 0,1,2,3
+    --model qwengr00t --algo mir --dataset libero_goal \
+    --run-id qwengr00t_mir_libero_goal_v1 --gpus 0,1,2,3
 
 # 2. Eval (50 trials × 10 tasks; final ckpt only)
 bash scripts/run_continual_learning_scripts/run_cl_eval.sh \
-    --run-id qwengr00t_mir_lora_libero_goal_refresh50_v1 \
-    --base-config configs/continual_learning/qwengr00t_mir_lora_libero_refresh50.yaml \
+    --run-id qwengr00t_mir_libero_goal_v1 \
+    --base-config configs/continual_learning/cl_base.yaml \
+    --base-config configs/continual_learning/models/qwengr00t.yaml \
     --gpus 0,1 --trials 50 --last-only
 ```
 
@@ -269,11 +270,11 @@ task.
 
 ```bash
 # LIBERO — final ckpt × 50 trials per task
-# --base-config must be the FULL merged config (cl_base.yaml + model overlay)
+# Repeat --base-config for each yaml: cl_base.yaml then the model overlay
 bash scripts/run_continual_learning_scripts/run_cl_eval.sh \
     --run-id qwengr00t_mir_libero_goal_v1 \
     --base-config configs/continual_learning/cl_base.yaml \
-                  configs/continual_learning/models/qwengr00t.yaml \
+    --base-config configs/continual_learning/models/qwengr00t.yaml \
     --gpus 0,1 --trials 50 --last-only
 ```
 

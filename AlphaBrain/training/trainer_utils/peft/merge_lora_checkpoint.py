@@ -9,7 +9,8 @@ the peft module so it can be invoked via `python -m` without path hacks.
 
 Usage (from repo root, starVLA env active):
     python -m AlphaBrain.training.trainer_utils.peft.merge_lora_checkpoint \\
-        --base_config configs/continual_learning/qwengr00t_continual_libero.yaml \\
+        --base_config configs/continual_learning/cl_base.yaml \\
+                      configs/continual_learning/models/qwengr00t.yaml \\
         --lora_adapter_dir results/Checkpoints/.../task_4_id4_steps_50000_lora_adapter \\
         --action_model_pt  results/Checkpoints/.../task_4_id4_steps_50000_action_model.pt \\
         --output_path      results/Checkpoints/.../task_4_id4_steps_50000_pytorch_model.pt
@@ -19,8 +20,12 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser(description="Merge LoRA adapter into full AlphaBrain checkpoint")
-    parser.add_argument("--base_config", type=str, required=True,
-                        help="Path to training YAML config (for building the base model)")
+    parser.add_argument("--base_config", type=str, nargs="+", required=True,
+                        help=(
+                            "One or more YAML config paths merged left-to-right "
+                            "(same semantics as train.py --config_yaml). "
+                            "E.g. --base_config cl_base.yaml models/qwengr00t.yaml"
+                        ))
     parser.add_argument("--lora_adapter_dir", type=str, required=True,
                         help="Path to LoRA adapter directory (contains adapter_model.safetensors)")
     parser.add_argument("--action_model_pt", type=str, required=True,
@@ -37,7 +42,9 @@ def main():
     from AlphaBrain.training.trainer_utils.peft import load_and_merge
 
     print(f"[0/4] Loading config from {args.base_config}")
-    cfg = OmegaConf.load(args.base_config)
+    cfg = OmegaConf.load(args.base_config[0])
+    for _extra in args.base_config[1:]:
+        cfg = OmegaConf.merge(cfg, OmegaConf.load(_extra))
     cfg = wrap_config(cfg)
 
     load_and_merge(

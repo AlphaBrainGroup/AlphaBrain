@@ -11,10 +11,11 @@
 #   robocasa  : Robocasa-atomic10 (10 atomic kitchen tasks).
 #
 # Usage (from repo root):
-#   # LIBERO LoRA run
+#   # LIBERO LoRA run (pass cl_base.yaml + model overlay as two --base-config values)
 #   bash scripts/run_continual_learning_scripts/run_cl_eval.sh \
-#       --run-id qwengr00t_mir_lora_libero_goal_v1 \
-#       --base-config configs/continual_learning/qwengr00t_mir_lora_libero.yaml \
+#       --run-id qwengr00t_mir_libero_goal_v1 \
+#       --base-config configs/continual_learning/cl_base.yaml \
+#       --base-config configs/continual_learning/models/qwengr00t.yaml \
 #       --gpus 0,1 --suite libero_goal --trials 50 --last-only
 #
 #   # LIBERO full-param run (no --base-config needed)
@@ -36,7 +37,7 @@ cd "$REPO_ROOT"
 
 # ---------- defaults ----------
 RUN_ID=""
-BASE_CONFIG=""
+BASE_CONFIGS=()   # array — allow multiple --base-config flags (merged left-to-right)
 GPUS="0"
 BENCHMARK="libero"            # libero | robocasa
 # LIBERO knobs
@@ -76,8 +77,10 @@ Required:
 
 Common:
   --benchmark NAME      libero | robocasa (default libero)
-  --base-config PATH    LoRA merge base config (required when ckpts contain *_lora_adapter)
-                        e.g. configs/continual_learning/qwengr00t_er_lora_libero.yaml
+  --base-config PATH    LoRA merge base config (required when ckpts contain *_lora_adapter).
+                        Specify once per yaml; paths are merged left-to-right.
+                        e.g. --base-config configs/continual_learning/cl_base.yaml \
+                             --base-config configs/continual_learning/models/qwengr00t.yaml
   --gpus LIST           Comma-separated GPU list (default "0"; "0,1" parallel, "1,2,3" etc.)
   --port-base N         Starting port (default 5694)
   --output-base PATH    Eval results root (default results/eval_cl/<RUN_ID>)
@@ -95,22 +98,26 @@ Robocasa-specific (--benchmark robocasa):
   --n-envs N            Vectorized envs per task (default 1)
   --n-action-steps N    Action chunk size returned per server call (default 16)
 
-Run-id → base-config conventions for LoRA runs:
-  qwengr00t_*_lora_libero*    | configs/continual_learning/qwengr00t_{er,mir}_lora_libero[_*].yaml
-  qwengr00t_*_lora_robocasa*  | configs/continual_learning/qwengr00t_{er,mir}_lora_robocasa_atomic10.yaml
-  neurovla_*_lora_*           | configs/continual_learning/neurovla_er_lora_libero.yaml
-  llamaoft_*_lora_*           | configs/continual_learning/llamaoft_er_lora_libero.yaml
-  Full-param runs             | omit --base-config (no adapter merge)
+Base config for LoRA runs (always cl_base.yaml + the model overlay):
+  QwenGR00T runs   | --base-config configs/continual_learning/cl_base.yaml \
+                      --base-config configs/continual_learning/models/qwengr00t.yaml
+  NeuroVLA runs    | --base-config configs/continual_learning/cl_base.yaml \
+                      --base-config configs/continual_learning/models/neurovla.yaml
+  LlamaOFT runs    | --base-config configs/continual_learning/cl_base.yaml \
+                      --base-config configs/continual_learning/models/llamaoft.yaml
+  Full-param runs  | omit --base-config entirely (no adapter merge needed)
 
 Examples:
-  # LIBERO-Goal LoRA + MIR — full 10×10 matrix, 2 GPU, 50 trials
-  bash $0 --run-id qwengr00t_mir_lora_libero_goal_v1 \\
-          --base-config configs/continual_learning/qwengr00t_mir_lora_libero.yaml \\
+  # LIBERO-Goal QwenGR00T LoRA + MIR — full 10×10 matrix, 2 GPU, 50 trials
+  bash $0 --run-id qwengr00t_mir_libero_goal_v1 \\
+          --base-config configs/continual_learning/cl_base.yaml \\
+          --base-config configs/continual_learning/models/qwengr00t.yaml \\
           --gpus 0,1 --trials 50
 
-  # LIBERO-Long quick sanity check (last ckpt only)
-  bash $0 --run-id qwengr00t_er_lora_libero_long_v1 \\
-          --base-config configs/continual_learning/qwengr00t_er_lora_libero_long.yaml \\
+  # LIBERO-Long ER quick sanity check (last ckpt only)
+  bash $0 --run-id qwengr00t_er_libero_long_v1 \\
+          --base-config configs/continual_learning/cl_base.yaml \\
+          --base-config configs/continual_learning/models/qwengr00t.yaml \\
           --suite libero_10 --gpus 0 --trials 10 --last-only
 
   # Robocasa-atomic10 final-ckpt eval (50 episodes × 10 tasks)
@@ -124,7 +131,7 @@ EOF
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --run-id)         RUN_ID="$2"; shift 2 ;;
-        --base-config)    BASE_CONFIG="$2"; shift 2 ;;
+        --base-config)    BASE_CONFIGS+=("$2"); shift 2 ;;
         --gpus)           GPUS="$2"; shift 2 ;;
         --benchmark)      BENCHMARK="$2"; shift 2 ;;
         --suite)          SUITE="$2"; shift 2 ;;
@@ -173,14 +180,15 @@ list_available_runs() {
             local kind base_yaml
             if [ "$n_lora" -gt 0 ]; then
                 kind="LoRA  (need --base-config)"
-                # try to guess base config from run_id prefix
+                # guess model overlay from run_id prefix
                 case "$run" in
-                    *qwen*|alphabrain*)         base_yaml="configs/continual_learning/qwengr00t_er_lora_libero.yaml" ;;
-                    *neurovla*lora*|*neurovla_cl_lora*)          base_yaml="configs/continual_learning/neurovla_er_lora_libero.yaml" ;;
-                    *llama*lora*|*llamaoft_cl_lora*)             base_yaml="configs/continual_learning/llamaoft_er_lora_libero.yaml" ;;
-                    *) base_yaml="<pick matching configs/continual_learning/*.yaml>" ;;
+                    *qwen*|alphabrain*) base_yaml="--base-config configs/continual_learning/cl_base.yaml --base-config configs/continual_learning/models/qwengr00t.yaml" ;;
+                    *neurovla*)        base_yaml="--base-config configs/continual_learning/cl_base.yaml --base-config configs/continual_learning/models/neurovla.yaml" ;;
+                    *llama*)           base_yaml="--base-config configs/continual_learning/cl_base.yaml --base-config configs/continual_learning/models/llamaoft.yaml" ;;
+                    *paligemma*)       base_yaml="--base-config configs/continual_learning/cl_base.yaml --base-config configs/continual_learning/models/paligemma.yaml" ;;
+                    *)                 base_yaml="--base-config configs/continual_learning/cl_base.yaml --base-config configs/continual_learning/models/<model>.yaml" ;;
                 esac
-                printf "  %-50s %-25s %2d ckpts   --base-config %s\n" "$run" "$kind" "$n_lora" "$base_yaml"
+                printf "  %-50s %-20s %2d ckpts   %s\n" "$run" "$kind" "$n_lora" "$base_yaml"
             else
                 kind="Full-param"
                 printf "  %-50s %-25s %2d ckpts\n" "$run" "$kind" "$n_pt"
@@ -280,7 +288,7 @@ IS_LORA=false
 CHECKPOINTS=()
 if compgen -G "$CKPT_SUB/task_*_lora_adapter" > /dev/null; then
     IS_LORA=true
-    [ -n "$BASE_CONFIG" ] || { echo "[error] LoRA detected; --base-config is required"; exit 1; }
+    [ "${#BASE_CONFIGS[@]}" -gt 0 ] || { echo "[error] LoRA detected; --base-config is required (pass cl_base.yaml + model overlay)"; exit 1; }
     while IFS= read -r p; do
         name=$(basename "$p")
         CHECKPOINTS+=("${name%_lora_adapter}")
@@ -356,7 +364,7 @@ merge_single() {
     printf "%b ${CG}GPU%s${C0} ${CM}merging${C0}: ${CV}%s${C0}\n" "$ts" "$gpu" "$name"
     CUDA_VISIBLE_DEVICES=$gpu "$SERVER_PYTHON" -m \
         AlphaBrain.training.trainer_utils.peft.merge_lora_checkpoint \
-        --base_config "$BASE_CONFIG" \
+        --base_config "${BASE_CONFIGS[@]}" \
         --lora_adapter_dir "$CKPT_SUB/${name}_lora_adapter" \
         --action_model_pt  "$CKPT_SUB/${name}_action_model.pt" \
         --output_path      "$merged"
