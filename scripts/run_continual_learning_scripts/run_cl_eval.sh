@@ -13,18 +13,18 @@
 # Usage (from repo root):
 #   # LIBERO LoRA run — just pass --model <name>, configs expand automatically
 #   bash scripts/run_continual_learning_scripts/run_cl_eval.sh \
-#       --run-id qwengr00t_mir_libero_goal_v1 \
+#       --run-id qwengr00t_mir_libero_goal \
 #       --model qwengr00t \
 #       --gpus 0,1 --suite libero_goal --trials 50 --last-only
 #
 #   # LIBERO full-param run (omit --model; no adapter merge needed)
 #   bash scripts/run_continual_learning_scripts/run_cl_eval.sh \
-#       --run-id neurovla_er_libero_goal_v1 --gpus 0
+#       --run-id neurovla_er_libero_goal --gpus 0
 #
 #   # Robocasa-atomic10 LoRA run (50 episodes/task on the pretrain split)
 #   bash scripts/run_continual_learning_scripts/run_cl_eval.sh \
 #       --benchmark robocasa \
-#       --run-id qwengr00t_er_lora_robocasa_atomic10_v1 \
+#       --run-id qwengr00t_er_robocasa_atomic10 \
 #       --model qwengr00t \
 #       --gpus 0 --n-episodes 50 --last-only
 # =============================================================================
@@ -105,16 +105,16 @@ Robocasa-specific (--benchmark robocasa):
 
 Examples:
   # LIBERO-Goal QwenGR00T LoRA + MIR — full 10×10 matrix, 2 GPU, 50 trials
-  bash $0 --run-id qwengr00t_mir_libero_goal_v1 \\
+  bash $0 --run-id qwengr00t_mir_libero_goal \\
           --model qwengr00t --gpus 0,1 --trials 50
 
   # LIBERO-Long ER quick sanity check (last ckpt only)
-  bash $0 --run-id qwengr00t_er_libero_long_v1 \\
+  bash $0 --run-id qwengr00t_er_libero_long \\
           --model qwengr00t --suite libero_10 --gpus 0 --trials 10 --last-only
 
   # Robocasa-atomic10 final-ckpt eval (50 episodes × 10 tasks)
   bash $0 --benchmark robocasa \\
-          --run-id qwengr00t_er_lora_robocasa_atomic10_v1 \\
+          --run-id qwengr00t_er_robocasa_atomic10 \\
           --model qwengr00t --gpus 0 --n-episodes 50 --last-only
 EOF
 }

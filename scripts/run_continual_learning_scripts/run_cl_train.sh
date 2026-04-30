@@ -17,8 +17,8 @@
 #       # MIR 77 % recipe on LIBERO-Goal
 #
 #   bash scripts/run_continual_learning_scripts/run_cl_train.sh \
-#       --model qwengr00t --algo er --dataset libero_long --run-id my_run_v1
-#       # ER on LIBERO-Long with explicit run id
+#       --model qwengr00t --algo er --dataset libero_long
+#       # ER on LIBERO-Long
 #
 #   bash scripts/run_continual_learning_scripts/run_cl_train.sh \
 #       --model qwengr00t --algo er -- --lora.enabled=false
@@ -101,8 +101,8 @@ Examples:
   # MIR on LIBERO-Long
   bash $0 --model qwengr00t --algo mir --dataset libero_long --gpus 0,1,2,3
 
-  # ER on LIBERO-Long with custom run id
-  bash $0 --model qwengr00t --algo er --dataset libero_long --run-id er_long_v2
+  # ER on LIBERO-Long
+  bash $0 --model qwengr00t --algo er --dataset libero_long
 
   # NeuroVLA + ER
   bash $0 --model neurovla --algo er --dataset libero_goal
@@ -238,9 +238,9 @@ else
         )
     fi
 
-    # Auto run_id: {model}_{algo}_{dataset}_v1 (overridable via --run-id)
+    # Auto run_id: {model}_{algo}_{dataset} (overridable via --run-id)
     if [ -z "$RUN_ID" ]; then
-        RUN_ID="${MODEL}_${ALGO}_${DATASET}_v1"
+        RUN_ID="${MODEL}_${ALGO}_${DATASET}"
     fi
     DISPLAY_MODEL="$MODEL"
     DISPLAY_ALGO=$(echo "$ALGO" | tr '[:lower:]' '[:upper:]')

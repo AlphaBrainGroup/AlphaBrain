@@ -183,11 +183,11 @@ T×T matrix eval (drop `--last-only`); the LIBERO-Long row is a 50-trial
 # 1. Train (~17 h on 4× A800 80 GB)
 bash scripts/run_continual_learning_scripts/run_cl_train.sh \
     --model qwengr00t --algo mir --dataset libero_goal \
-    --run-id qwengr00t_mir_libero_goal_v1 --gpus 0,1,2,3
+    --run-id qwengr00t_mir_libero_goal --gpus 0,1,2,3
 
 # 2. Eval (50 trials × 10 tasks; final ckpt only)
 bash scripts/run_continual_learning_scripts/run_cl_eval.sh \
-    --run-id qwengr00t_mir_libero_goal_v1 \
+    --run-id qwengr00t_mir_libero_goal \
     --model qwengr00t \
     --gpus 0,1 --trials 50 --last-only
 ```
@@ -237,7 +237,7 @@ bash scripts/run_continual_learning_scripts/run_cl_train.sh \
 # NeuroVLA + ER
 bash scripts/run_continual_learning_scripts/run_cl_train.sh \
     --model neurovla --algo er --dataset libero_goal \
-    --run-id neurovla_er_goal_v1
+    --run-id neurovla_er_libero_goal
 
 # LlamaOFT + ER
 bash scripts/run_continual_learning_scripts/run_cl_train.sh \
@@ -270,7 +270,7 @@ task.
 ```bash
 # LIBERO — final ckpt × 50 trials per task
 bash scripts/run_continual_learning_scripts/run_cl_eval.sh \
-    --run-id qwengr00t_mir_libero_goal_v1 \
+    --run-id qwengr00t_mir_libero_goal \
     --model qwengr00t \
     --gpus 0,1 --trials 50 --last-only
 ```
@@ -354,7 +354,7 @@ custom streams beyond LIBERO.
 | `--model MODEL`   | VLA backbone. Choices: `qwengr00t` \| `neurovla` \| `llamaoft` \| `paligemma`.          | `qwengr00t`    |
 | `--algo ALGO`     | CL algorithm. Choices: `er` \| `mir`.                                                    | `er`           |
 | `--dataset DS`    | Task stream. Choices: `libero_goal` \| `libero_long`.                                    | `libero_goal`  |
-| `--run-id ID`     | Override auto-generated run_id (`{model}_{algo}_{dataset}_v1`).                         | auto           |
+| `--run-id ID`     | Override auto-generated run_id (`{model}_{algo}_{dataset}`).                            | auto           |
 | `--gpus SPEC`     | Count (`"2"`) or id-list (`"1,2,3"`). A list pins `CUDA_VISIBLE_DEVICES`.               | auto-detect    |
 | `--port N`        | `accelerate` main process port.                                                          | auto-pick      |
 | `--smoke`         | 5 steps/task × batch 4 — end-to-end pipeline check.                                     | off            |
