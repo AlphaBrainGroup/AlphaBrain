@@ -57,7 +57,6 @@ def _is_world_model_vlm(vlm_interface) -> bool:
     return "WorldModelVLMInterface" in cls_names
 
 
-@FRAMEWORK_REGISTRY.register("LlamaPi0FM")
 @FRAMEWORK_REGISTRY.register("QwenPI")
 class Qwen_PI(BaseFramework):
     """
@@ -88,8 +87,6 @@ class Qwen_PI(BaseFramework):
 
         # ----- Detect VLM backend type -----
         self._world_model_mode = _is_world_model_vlm(self.qwen_vl_interface)
-        self._vlm_backend = self._detect_vlm_backend(config)
-        logger.info("[QwenPI] VLM backend: %s", self._vlm_backend)
 
         if self._world_model_mode:
             llm_hidden_size = self.qwen_vl_interface.model.config.hidden_size
@@ -102,33 +99,6 @@ class Qwen_PI(BaseFramework):
                 "num_vl_layers(backbone blocks for layerwise XAttn)=%d",
                 _backend, llm_hidden_size, num_vl_layers,
             )
-        elif self._vlm_backend == "llama":
-            # Llama 3.2 Vision: VLM hidden_size may differ from DiT hidden_size
-            model_cfg = self.qwen_vl_interface.model.config
-            self._llama_vlm_hidden_size = model_cfg.text_config.hidden_size  # 4096
-            llama_num_layers = model_cfg.text_config.num_hidden_layers  # 40
-            
-            # DiT dimensions: use action_model config if available, else match VLM
-            dit_hidden = getattr(config.framework.action_model, 'action_hidden_dim', self._llama_vlm_hidden_size)
-            dit_layers = getattr(config.framework.action_model, 'num_dit_layers', llama_num_layers)
-            
-            # If DiT hidden != VLM hidden, we need a projection layer
-            if dit_hidden != self._llama_vlm_hidden_size:
-                self._vlm_to_dit_proj = nn.Linear(self._llama_vlm_hidden_size, dit_hidden, bias=False)
-                logger.info("[LlamaPi0FM] Added VLM→DiT projection: %d → %d", 
-                           self._llama_vlm_hidden_size, dit_hidden)
-            else:
-                self._vlm_to_dit_proj = None
-            
-            llm_hidden_size = dit_hidden  # DiT sees this dimension
-            num_vl_layers = dit_layers
-            logger.info("[LlamaPi0FM] Llama VLM: hidden=%d, layers=%d → DiT: hidden=%d, layers=%d", 
-                       self._llama_vlm_hidden_size, llama_num_layers, dit_hidden, dit_layers)
-            
-            # Enable gradient checkpointing for 11B model
-            if hasattr(self.qwen_vl_interface.model, 'gradient_checkpointing_enable'):
-                self.qwen_vl_interface.model.gradient_checkpointing_enable()
-                logger.info("Enabled gradient checkpointing for Llama model")
         else:
             # Standard Qwen2.5-VL path (original behaviour)
             num_vl_layers, llm_hidden_size = 36, self.qwen_vl_interface.model.config.hidden_size
@@ -177,25 +147,10 @@ class Qwen_PI(BaseFramework):
     # helpers
     # ------------------------------------------------------------------
 
-    def _detect_vlm_backend(self, config) -> str:
-        """Detect VLM backend type from config."""
-        if hasattr(config.framework, 'llamavl'):
-            return "llama"
-        elif hasattr(config.framework, 'qwenvl'):
-            return "qwen"
-        else:
-            return "qwen"  # default
-
     def _build_vlm_inputs(self, batch_images, instructions):
-        """Build VLM inputs based on backend type."""
-        if self._vlm_backend == "llama":
-            return self.qwen_vl_interface.build_llama_inputs(
-                images=batch_images, instructions=instructions
-            )
-        else:
-            return self.qwen_vl_interface.build_qwenvl_inputs(
-                images=batch_images, instructions=instructions
-            )
+        return self.qwen_vl_interface.build_qwenvl_inputs(
+            images=batch_images, instructions=instructions
+        )
 
     def _extract_vl_embs(self, qwenvl_outputs):
         """Extract per-layer VL embeddings from the VLM output.
@@ -228,13 +183,8 @@ class Qwen_PI(BaseFramework):
                 vl_embs_list = [fused] * expected_layers
                 base_hidden = fused
         else:
-            # Qwen2.5-VL / Llama: take the last N layers matching DiT depth.
+            # Qwen2.5-VL: take the last N layers matching DiT depth.
             vl_embs_list = list(all_hidden[-expected_layers:])
-            base_hidden = vl_embs_list[-1]
-
-        # Project VLM hidden states to DiT dimension if needed (e.g., Llama 4096 → 1024)
-        if hasattr(self, '_vlm_to_dit_proj') and self._vlm_to_dit_proj is not None:
-            vl_embs_list = [self._vlm_to_dit_proj(h) for h in vl_embs_list]
             base_hidden = vl_embs_list[-1]
 
         return vl_embs_list, base_hidden

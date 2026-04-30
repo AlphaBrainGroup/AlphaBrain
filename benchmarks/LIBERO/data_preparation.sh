@@ -51,26 +51,22 @@ download_dataset() {
   done
 }
 
-for repo in \
-  IPEC-COMMUNITY/libero_spatial_no_noops_1.0.0_lerobot \
-  IPEC-COMMUNITY/libero_object_no_noops_1.0.0_lerobot \
-  IPEC-COMMUNITY/libero_goal_no_noops_1.0.0_lerobot \
+LIBERO_REPOS=(
+  IPEC-COMMUNITY/libero_spatial_no_noops_1.0.0_lerobot
+  IPEC-COMMUNITY/libero_object_no_noops_1.0.0_lerobot
+  IPEC-COMMUNITY/libero_goal_no_noops_1.0.0_lerobot
   IPEC-COMMUNITY/libero_10_no_noops_1.0.0_lerobot
-do
+)
+
+for repo in "${LIBERO_REPOS[@]}"; do
   download_dataset "$repo" "$DEST/libero/${repo##*/}"
 done
 
-download_dataset "AlphaBrain/LLaVA-OneVision-COCO" "$DEST/LLaVA-OneVision-COCO"
-if [[ -f "$DEST/LLaVA-OneVision-COCO/sharegpt4v_coco.zip" ]] && [[ ! -d "$DEST/LLaVA-OneVision-COCO/sharegpt4v_coco" ]]; then
-  unzip -o -- "$DEST/LLaVA-OneVision-COCO/sharegpt4v_coco.zip" -d "$DEST/LLaVA-OneVision-COCO/"
-fi
-
 mkdir -p "$CUR/data/datasets"
 ln -sfn "$DEST/libero" "$CUR/data/datasets/LEROBOT_LIBERO_DATA"
-ln -sfn "$DEST/LLaVA-OneVision-COCO" "$CUR/data/datasets/LLaVA-OneVision-COCO"
 
-## move modality
-cp "$CUR/benchmarks/LIBERO/train/modality.json" "$CUR/data/datasets/LEROBOT_LIBERO_DATA/libero_10_no_noops_1.0.0_lerobot/meta"
-cp "$CUR/benchmarks/LIBERO/train/modality.json" "$CUR/data/datasets/LEROBOT_LIBERO_DATA/libero_goal_no_noops_1.0.0_lerobot/meta"
-cp "$CUR/benchmarks/LIBERO/train/modality.json" "$CUR/data/datasets/LEROBOT_LIBERO_DATA/libero_object_no_noops_1.0.0_lerobot/meta"
-cp "$CUR/benchmarks/LIBERO/train/modality.json" "$CUR/data/datasets/LEROBOT_LIBERO_DATA/libero_spatial_no_noops_1.0.0_lerobot/meta"
+# Place modality.json into each LIBERO dataset's meta directory.
+for repo in "${LIBERO_REPOS[@]}"; do
+  cp "$CUR/benchmarks/LIBERO/train/modality.json" \
+    "$CUR/data/datasets/LEROBOT_LIBERO_DATA/${repo##*/}/meta"
+done

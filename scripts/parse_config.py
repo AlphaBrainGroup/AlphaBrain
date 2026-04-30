@@ -63,9 +63,9 @@ def parse_config(config_path: str, mode: str):
     if 'ib_hca' in nccl:
         print(f"export NCCL_IB_HCA={nccl['ib_hca']}")
     if 'blocking_wait' in nccl:
-        print(f"export NCCL_BLOCKING_WAIT={nccl['blocking_wait']}")
+        print(f"export TORCH_NCCL_BLOCKING_WAIT={nccl['blocking_wait']}")
     if 'async_error_handling' in nccl:
-        print(f"export NCCL_ASYNC_ERROR_HANDLING={nccl['async_error_handling']}")
+        print(f"export TORCH_NCCL_ASYNC_ERROR_HANDLING={nccl['async_error_handling']}")
     if 'timeout' in nccl:
         print(f"export NCCL_TIMEOUT={nccl['timeout']}")
     if 'socket_timeout_ms' in nccl:

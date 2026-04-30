@@ -13,7 +13,7 @@
 #   bash scripts/run_base_vla/train.sh <mode> [config_file]
 #
 # ─── Multi-task (libero_all) ────────────────────────────────────
-#   bash scripts/run_base_vla/train.sh paligemma_pi0_openpi_aligned_v3
+#   bash scripts/run_base_vla/train.sh paligemma_pi05_openpi_aligned_v3
 #   bash scripts/run_base_vla/train.sh paligemma_oft_all_150k
 #   bash scripts/run_base_vla/train.sh llama_oft_all_150k
 #

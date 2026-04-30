@@ -3,7 +3,7 @@ framework:
   name: LlamaOFT
   llamavl:
     # base_vlm: set via CLI or finetune_config.yaml
-    base_vlm: "/datasets/llama3_2-11B-Vision"
+    base_vlm: ${PRETRAINED_MODELS_DIR}/Llama-3.2-11B-Vision-Instruct
     attn_implementation: sdpa
     vl_hidden_dim: 4096
   qwenvl:

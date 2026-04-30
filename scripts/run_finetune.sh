@@ -35,6 +35,17 @@ if [ -f .env ]; then
     set -a; source .env; set +a
 fi
 
+# ── 清理训练日志噪声 ─────────────────────────────────────────
+# 关掉 albumentations 的版本检查弹窗
+export NO_ALBUMENTATIONS_UPDATE="${NO_ALBUMENTATIONS_UPDATE:-1}"
+# torchrun 默认会警告 OMP_NUM_THREADS 未设置，给个合理默认
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-8}"
+# 注：DeepSpeed import 时会用 distutils.has_function 探测 libaio / libcufile，
+# 顺手把一坨 `gcc -pthread … compiler_compat …` 命令打到 stdout。DS_BUILD_AIO /
+# DS_BUILD_GDS 只能跳过 JIT 构建，并不会关掉这个 is_compatible 探测；这里用
+# 文末的 grep 过滤（在 tee 之前）一次性吃掉，pattern 同时含 gcc -pthread 和
+# conda 的 compiler_compat 目录，不会误伤用户输出。
+
 # 解析参数：
 #   bash scripts/run_finetune.sh qwen_oft                  → mode=qwen_oft, config=默认
 #   bash scripts/run_finetune.sh --mode qwen_oft            → 同上
@@ -66,6 +77,14 @@ CONFIG_FILE="${CONFIG_FILE:-configs/finetune_config.yaml}"
 if [ ! -f "$CONFIG_FILE" ]; then
     error "Config file '${C_YELLOW}${CONFIG_FILE}${C_RESET}' not found!"
     exit 1
+fi
+
+# 预训练权重根目录必填（参与训练/评估的所有 ${PRETRAINED_MODELS_DIR}/<name> 路径都依赖它）
+: "${PRETRAINED_MODELS_DIR:?need PRETRAINED_MODELS_DIR in .env (parent dir for paligemma-3b-pt-224, Llama-3.2-11B-Vision-Instruct, pi05_base, etc.)}"
+
+# 缺失的预训练权重自动从 HuggingFace 拉取（设 ALPHABRAIN_DISABLE_AUTO_DOWNLOAD=1 关闭）
+if [ -n "$MODE" ]; then
+    python scripts/download_pretrained.py --config "$CONFIG_FILE" --mode "$MODE" || exit 1
 fi
 
 # 使用 Python 脚本解析配置文件并加载到当前 shell 环境
@@ -199,4 +218,6 @@ python -m accelerate.commands.launch \
   --config_yaml "${CONFIG_FILE}" \
   --mode "${MODE}" \
   "${EXTRA_ARGS[@]}" \
-  2>&1 | tee "${TRAIN_LOG}"
+  2>&1 \
+  | grep --line-buffered -vE 'gcc -pthread .*compiler_compat' \
+  | tee "${TRAIN_LOG}"

@@ -28,9 +28,9 @@ Every page uses the `:::` directive so that mkdocstrings expands submodules auto
 To adjust how a specific symbol is displayed on a page (for example, hide the source, restrict members, or change the heading level), override the global defaults with an `options:` block, e.g.:
 
 ```markdown
-::: AlphaBrain.model.framework.PaliGemmaPi05
+::: AlphaBrain.model.framework.PaliGemmaPi
     options:
       show_source: false
       members:
-        - PaliGemma_Pi05
+        - PaliGemmaPi
 ```

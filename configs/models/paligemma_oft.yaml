@@ -3,7 +3,7 @@
 framework:
   name: PaliGemmaOFT
   paligemma:
-    base_vlm: "/datasets/peligemma"
+    base_vlm: ${PRETRAINED_MODELS_DIR}/paligemma-3b-pt-224
     attn_implementation: flash_attention_2
   # qwenvl routing (for get_vlm_model compatibility)
   qwenvl:

@@ -26,7 +26,7 @@ See [Installation](installation.md) for the full environment setup.
 
 ```bash
 # PaliGemmaPi05 multi-task (4 GPU, BS=256, 60k steps)
-bash scripts/run_base_vla/train.sh paligemma_pi0_openpi_aligned_v3
+bash scripts/run_base_vla/train.sh paligemma_pi05_openpi_aligned_v3
 
 # PaliGemmaOFT multi-task (4 GPU, BS=128, 150k steps)
 bash scripts/run_base_vla/train.sh paligemma_oft_all_150k
@@ -44,7 +44,7 @@ Checkpoints: `results/training/<run_id>/checkpoints/steps_*`.
 ## Evaluate
 
 ```bash
-bash scripts/run_base_vla/eval.sh paligemma_pi0_v2_goal_eval
+bash scripts/run_base_vla/eval.sh paligemma_pi05_eval
 bash scripts/run_base_vla/eval.sh paligemma_oft_bs128_goal_eval
 bash scripts/run_base_vla/eval.sh llama_oft_eval
 ```

@@ -9,6 +9,8 @@ Mirrors the _Llama_VL_Interface / _QWen_VL_Interface pattern:
   - forward()                 → run model, return hidden_states
 """
 
+import os
+
 import torch
 import torch.nn as nn
 from typing import Optional, List
@@ -28,7 +30,10 @@ class _PaliGemma_OFT_VL_Interface(nn.Module):
         self.config = config
 
         paligemma_cfg = config.framework.get("paligemma", {})
-        model_id = paligemma_cfg.get("base_vlm", "/datasets/peligemma")
+        model_id = paligemma_cfg.get("base_vlm") or os.path.join(
+            os.environ.get("PRETRAINED_MODELS_DIR", "data/pretrained_models"),
+            "paligemma-3b-pt-224",
+        )
 
         use_meta_device = paligemma_cfg.get("_meta_device_init", False)
         if use_meta_device:

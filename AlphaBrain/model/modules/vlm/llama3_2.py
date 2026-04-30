@@ -1,6 +1,8 @@
 # Copyright 2025 VLA-Engine. All rights reserved.
 # Llama 3.2 Vision interface for VLA-Engine
 
+import os
+
 import torch
 import torch.nn as nn
 from typing import Optional, List
@@ -57,7 +59,10 @@ class _Llama_VL_Interface(nn.Module):
         super().__init__()
 
         llamavl_config = config.framework.get("llamavl", {})
-        model_id = llamavl_config.get("base_vlm", "/datasets/llama3_2-11B-Vision")
+        model_id = llamavl_config.get("base_vlm") or os.path.join(
+            os.environ.get("PRETRAINED_MODELS_DIR", "data/pretrained_models"),
+            "Llama-3.2-11B-Vision-Instruct",
+        )
 
         use_meta_device = llamavl_config.get("_meta_device_init", False)
         if use_meta_device:

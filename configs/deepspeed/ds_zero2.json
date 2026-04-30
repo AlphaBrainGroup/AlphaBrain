@@ -15,9 +15,8 @@
         "reduce_scatter": true,
         "reduce_bucket_size": 5e8,
         "overlap_comm": true,
-        "contiguous_gradients": true,
-        "cpu_offload": false
+        "contiguous_gradients": true
     },
-    "gradient_clipping": 0.0,
+    "gradient_clipping": 1.0,
     "steps_per_print": 10
 }

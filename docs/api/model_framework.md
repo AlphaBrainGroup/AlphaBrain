@@ -73,11 +73,7 @@ Each framework is an independent VLA model implementation. Frameworks are regist
     options:
       heading_level: 3
 
-::: AlphaBrain.model.framework.PaliGemmaPi0
-    options:
-      heading_level: 3
-
-::: AlphaBrain.model.framework.PaliGemmaPi05
+::: AlphaBrain.model.framework.PaliGemmaPi
     options:
       heading_level: 3
 

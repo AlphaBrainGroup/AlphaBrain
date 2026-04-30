@@ -8,7 +8,7 @@
 #   bash scripts/run_base_vla/eval.sh <eval_mode> [config_file]
 #
 # ─── PaliGemmaPi05 eval ─────────────────────────────────────────
-#   bash scripts/run_base_vla/eval.sh paligemma_pi0_v2_goal_eval
+#   bash scripts/run_base_vla/eval.sh paligemma_pi05_eval
 #
 # ─── PaliGemmaOFT eval ──────────────────────────────────────────
 #   bash scripts/run_base_vla/eval.sh paligemma_oft_eval

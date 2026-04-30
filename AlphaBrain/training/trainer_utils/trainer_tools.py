@@ -226,11 +226,20 @@ class TrainerUtils:
         return num_params, num_trainable_params
 
     @staticmethod
-    def load_pretrained_backbones(model, checkpoint_path=None, reload_modules=None):
+    def load_pretrained_backbones(
+        model,
+        checkpoint_path=None,
+        reload_modules=None,
+        min_match_ratio: float = 0.5,
+    ):
         """
         load checkpoint:
         - if reload_modules is set, load by path part
         - otherwise → load the entire model parameters (overwrite model)
+
+        Args:
+            min_match_ratio: warn loudly if matched / total model params falls below
+                this fraction during full load. Default 0.5. Set to 0.0 to silence.
 
         return:
             replace, loaded_modules: list of module paths that successfully loaded parameters; if global load, then ["<full_model>"]
@@ -299,13 +308,46 @@ class TrainerUtils:
                         skipped_keys.append(f"{k}: ckpt {tuple(v.shape)} vs model {tuple(model_state[k].shape)}")
                     else:
                         filtered_checkpoint[k] = v
-                if skipped_keys and (not dist.is_initialized() or dist.get_rank() == 0):
+                is_main = not dist.is_initialized() or dist.get_rank() == 0
+                if skipped_keys and is_main:
                     print(f"{_bold_yellow('[warn]')} skipped {len(skipped_keys)} shape-mismatched keys:")
                     for sk in skipped_keys:
                         print(f"  {_dim(sk)}")
-                model.load_state_dict(filtered_checkpoint, strict=False)
-                if not dist.is_initialized() or dist.get_rank() == 0:
-                    print(f"{_bold_green('[ok]')} loaded {_bold_cyan('<full_model>')} parameters")
+                incompatible = model.load_state_dict(filtered_checkpoint, strict=False)
+                missing_keys = list(getattr(incompatible, "missing_keys", []))
+                unexpected_keys = list(getattr(incompatible, "unexpected_keys", []))
+                total = len(model_state)
+                matched = total - len(missing_keys)
+                ratio = matched / total if total else 0.0
+
+                if is_main:
+                    if ratio >= 0.95:
+                        tag, color = "[ok]", _bold_green
+                    elif ratio >= min_match_ratio:
+                        tag, color = "[partial]", _bold_yellow
+                    else:
+                        tag, color = "[low-coverage]", _bold_red
+                    print(
+                        f"{color(tag)} loaded {_bold_cyan('<full_model>')} "
+                        f"matched={matched}/{total} ({ratio*100:.1f}%)  "
+                        f"missing={len(missing_keys)}  unexpected={len(unexpected_keys)}  "
+                        f"shape_skipped={len(skipped_keys)}"
+                    )
+                    if ratio < min_match_ratio:
+                        print(
+                            f"{_bold_red('[low-coverage]')} matched ratio {ratio*100:.1f}% < "
+                            f"min_match_ratio {min_match_ratio*100:.1f}%. "
+                            f"Most of the model is still randomly initialized — "
+                            f"check checkpoint key naming. For openpi/lerobot π₀ checkpoints, "
+                            f"use AlphaBrain.model.modules.action_model.pi0_flow_matching_head."
+                            f"weight_bridge.load_pi0_weights instead."
+                        )
+                        sample_missing = missing_keys[:5]
+                        sample_unexpected = unexpected_keys[:5]
+                        if sample_missing:
+                            print(f"  {_dim('sample missing:')} {sample_missing}")
+                        if sample_unexpected:
+                            print(f"  {_dim('sample unexpected:')} {sample_unexpected}")
                 loaded_modules = ["<full_model>"]
             except Exception as e:
                 raise RuntimeError(f"{_bold_red('[error]')} loading full model failed: {e}")

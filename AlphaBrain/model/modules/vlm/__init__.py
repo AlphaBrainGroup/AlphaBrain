@@ -6,9 +6,9 @@ def get_vlm_model(config):
     vlm_name = None
     fw_name = getattr(config.framework, 'name', '')
     
-    if fw_name in ('LlamaPi0FM', 'LlamaOFT', 'LlamaPi05', 'LlamaPi0') and hasattr(config.framework, 'llamavl'):
+    if fw_name in ('LlamaOFT', 'LlamaPi05') and hasattr(config.framework, 'llamavl'):
         vlm_name = config.framework.llamavl.base_vlm
-    elif fw_name in ('PaliGemmaPi0', 'PaliGemmaOFT') and hasattr(config.framework, 'paligemma'):
+    elif fw_name in ('PaliGemmaPi05', 'PaliGemmaOFT') and hasattr(config.framework, 'paligemma'):
         vlm_name = config.framework.paligemma.base_vlm
     elif hasattr(config.framework, 'qwenvl'):
         vlm_type = config.framework.qwenvl.get("vlm_type", None) if hasattr(config.framework.qwenvl, 'get') else None
