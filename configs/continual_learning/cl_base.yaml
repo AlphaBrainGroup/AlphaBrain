@@ -1,0 +1,111 @@
+# =============================================================================
+# Continual Learning — Base Configuration
+#
+# Shared parameters across all model × algorithm × dataset combinations.
+# The framework block is intentionally absent; it is provided by a model
+# overlay file passed as the second --config_yaml argument:
+#
+#   accelerate launch ... train.py \
+#       --config_yaml configs/continual_learning/cl_base.yaml \
+#                     configs/continual_learning/models/qwengr00t.yaml \
+#       --run_id my_run_v1
+#
+# In practice, use run_cl_train.sh which handles composition automatically:
+#
+#   bash scripts/run_continual_learning_scripts/run_cl_train.sh \
+#       --model qwengr00t --algo er --dataset libero_goal
+#
+# Axis defaults (all three are overridable via run_cl_train.sh flags or
+# OmegaConf dotlist overrides):
+#   model:   qwengr00t (set by choosing models/qwengr00t.yaml)
+#   algo:    er        (replay block below; switch to MIR via --algo mir)
+#   dataset: libero_goal (switch via --dataset libero_long)
+# =============================================================================
+
+run_root_dir: results/Checkpoints
+seed: 42
+trackers: [jsonl]
+wandb_entity: ""
+wandb_project: llavavla
+is_debug: false
+
+
+datasets:
+  vla_data:
+    dataset_py: lerobot_datasets
+    data_root_dir: ${oc.env:LEROBOT_LIBERO_DATA_DIR}
+    dataset_mix: libero_goal
+    action_type: delta_qpos
+    sequential_step_sampling: false
+    default_image_resolution: [3, 224, 224]
+    per_device_batch_size: 8
+    load_all_data_for_training: true
+    obs: ["image_0"]
+    video_backend: torchvision_av
+
+
+# ============================================================================
+# Continual Learning — default: Experience Replay on LIBERO-Goal
+# To switch algorithm, pass dotlist overrides via run_cl_train.sh --algo mir
+# (the script disables replay and sets algorithm.* keys automatically).
+# ============================================================================
+continual_learning:
+  task_sequence: libero_goal
+  steps_per_task: 10000
+  save_checkpoint_per_task: true
+
+  replay:
+    enabled: true
+    method: experience_replay
+    buffer_size_per_task: 1000
+    replay_batch_ratio: 0.5
+    balanced_sampling: true
+
+
+# ============================================================================
+# LoRA — defaults applied to QwenGR00T / NeuroVLA / LlamaOFT.
+# PaliGemmaOFT model overlay sets enabled: false (full-param fine-tuning).
+# ============================================================================
+lora:
+  enabled: true
+  rank: 32
+  alpha: 16
+  dropout: 0.05
+  target_modules: "all-linear"
+
+
+trainer:
+  max_train_steps: 100000
+  num_warmup_steps: 500
+  save_interval: 5000
+  eval_interval: 5000
+  learning_rate:
+    base: 2.5e-05
+    # Module-specific learning rates are model-dependent; each model overlay
+    # adds its own keys here (e.g. qwen_vl_interface, llama_vl_interface).
+    # Unknown keys are silently ignored by build_param_lr_groups — safe.
+  lr_scheduler_type: cosine_with_min_lr
+  scheduler_specific_kwargs:
+    min_lr: 1.0e-06
+  freeze_modules: ''
+  loss_scale:
+    vla: 1.0
+  max_grad_norm: 1.0
+  warmup_ratio: 0.1
+  weight_decay: 0.0
+  logging_frequency: 10
+  gradient_clipping: 1.0
+  gradient_accumulation_steps: 1
+
+  optimizer:
+    name: AdamW
+    betas: [0.9, 0.95]
+    eps: 1.0e-08
+    weight_decay: 1.0e-08
+
+  save_format: pt
+  is_resume: false
+  resume_epoch: null
+  resume_step: null
+  enable_gradient_checkpointing: true
+  enable_mixed_precision_training: true

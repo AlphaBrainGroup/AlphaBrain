@@ -736,12 +736,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config_yaml",
         type=str,
+        nargs="+",
         required=True,
-        help="Path to YAML config with continual_learning section",
+        help=(
+            "One or more YAML config paths merged left-to-right (later files "
+            "override earlier ones).  Single-file usage is unchanged.  "
+            "Composable usage: --config_yaml cl_base.yaml models/qwengr00t.yaml"
+        ),
     )
     args, clipargs = parser.parse_known_args()
 
-    cfg = OmegaConf.load(args.config_yaml)
+    cfg = OmegaConf.load(args.config_yaml[0])
+    for _extra_yaml in args.config_yaml[1:]:
+        cfg = OmegaConf.merge(cfg, OmegaConf.load(_extra_yaml))
     dotlist = normalize_dotlist_args(clipargs)
     cli_cfg = OmegaConf.from_dotlist(dotlist)
     cfg = OmegaConf.merge(cfg, cli_cfg)

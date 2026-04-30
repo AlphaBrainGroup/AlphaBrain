@@ -1,0 +1,53 @@
+# =============================================================================
+# Model overlay: PaliGemmaOFT (~3 B — PaliGemma-3B + π0.5 action expert)
+# Merge over cl_base.yaml — overrides model-specific keys.
+# Notable differences vs QwenGR00T:
+#   - lora.enabled: false — full-parameter fine-tuning (LoRA not yet wired for
+#     PaliGemmaOFT's vlm_interface; tracked as future work)
+#   - data_root_dir: LIBERO_DATA_ROOT env var (different from LEROBOT_LIBERO_DATA_DIR)
+#   - obs: image_0 + wrist_image (two cameras)
+#   - include_state: true
+#   - per_device_batch_size: 2
+# =============================================================================
+
+framework:
+  name: PaliGemmaOFT
+  pi05: true
+  paligemma:
+    base_vlm: ${oc.env:PRETRAINED_MODELS_DIR}/paligemma-3b-pt-224
+    from_openpi_config: false
+  action_expert:
+    width: 1024
+    depth: 18
+    mlp_dim: 4096
+    num_heads: 8
+    num_kv_heads: 1
+    head_dim: 256
+    precision: bfloat16
+  action_model:
+    action_dim: 7
+    action_horizon: 10
+    future_action_window_size: 9
+    past_action_window_size: 0
+    num_inference_steps: 10
+    noise_beta_alpha: 1.5
+    noise_beta_beta: 1.0
+  reduce_in_full_precision: true
+
+
+datasets:
+  vla_data:
+    data_root_dir: ${oc.env:LIBERO_DATA_ROOT}
+    per_device_batch_size: 2
+    obs: ["image_0", "wrist_image"]
+    include_state: true
+
+
+lora:
+  enabled: false
+
+
+trainer:
+  learning_rate:
+    vlm_interface: 1.0e-05
+    flow_matching_head: 1.0e-04

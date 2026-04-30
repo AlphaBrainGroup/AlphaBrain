@@ -213,27 +213,43 @@ block `cd`s into the repo root so commands can be pasted verbatim.
 
 ### Training
 
+`run_cl_train.sh` uses a **three-axis interface**: pick `--model`, `--algo`,
+and `--dataset`; the script composes `cl_base.yaml` with the right model
+overlay automatically and wires up the algorithm-specific OmegaConf overrides.
+
 ```bash
 cd /path/to/AlphaBrain-CL
 
 # Default — QwenGR00T LoRA + ER on LIBERO-Goal (~15 h on 2× A800)
 bash scripts/run_continual_learning_scripts/run_cl_train.sh
 
-# Smoke test — 5 steps × 10 tasks, ~3 min (pipeline check, not convergence)
+# Pipeline smoke test — 5 steps × 10 tasks, ~3 min
 bash scripts/run_continual_learning_scripts/run_cl_train.sh --smoke
 
-# MIR 77% LIBERO-Goal recipe
+# MIR 77 % LIBERO-Goal recipe (refresh=50 frozen recipe)
 bash scripts/run_continual_learning_scripts/run_cl_train.sh \
-    --yaml configs/continual_learning/qwengr00t_mir_lora_libero_refresh50.yaml \
-    --gpus 0,1,2,3
+    --model qwengr00t --algo mir --dataset libero_goal --gpus 0,1,2,3
 
-# NeuroVLA full-parameter + ER
+# MIR on LIBERO-Long (same refresh=50 recipe)
 bash scripts/run_continual_learning_scripts/run_cl_train.sh \
-    --yaml configs/continual_learning/neurovla_er_libero.yaml \
-    --run-id neurovla_cl_run_v1
+    --model qwengr00t --algo mir --dataset libero_long --gpus 0,1,2,3
+
+# NeuroVLA + ER
+bash scripts/run_continual_learning_scripts/run_cl_train.sh \
+    --model neurovla --algo er --dataset libero_goal \
+    --run-id neurovla_er_goal_v1
+
+# LlamaOFT + ER
+bash scripts/run_continual_learning_scripts/run_cl_train.sh \
+    --model llamaoft --algo er --dataset libero_goal
+
+# QwenGR00T full-param ER (disable LoRA via passthrough override)
+bash scripts/run_continual_learning_scripts/run_cl_train.sh \
+    --model qwengr00t --algo er -- --lora.enabled=false
 
 # Pin GPUs + custom step budget
-bash scripts/run_continual_learning_scripts/run_cl_train.sh --gpus 1,2 -- \
+bash scripts/run_continual_learning_scripts/run_cl_train.sh \
+    --model qwengr00t --algo er --gpus 1,2 -- \
     --continual_learning.steps_per_task=20000
 ```
 
@@ -253,9 +269,11 @@ task.
 
 ```bash
 # LIBERO — final ckpt × 50 trials per task
+# --base-config must be the FULL merged config (cl_base.yaml + model overlay)
 bash scripts/run_continual_learning_scripts/run_cl_eval.sh \
-    --run-id qwengr00t_mir_lora_libero_goal_refresh50_v1 \
-    --base-config configs/continual_learning/qwengr00t_mir_lora_libero_refresh50.yaml \
+    --run-id qwengr00t_mir_libero_goal_v1 \
+    --base-config configs/continual_learning/cl_base.yaml \
+                  configs/continual_learning/models/qwengr00t.yaml \
     --gpus 0,1 --trials 50 --last-only
 ```
 
@@ -333,41 +351,46 @@ custom streams beyond LIBERO.
 
 ### `run_cl_train.sh`
 
-| Flag              | Description                                                                  | Default                                                    |
-|:------------------|:-----------------------------------------------------------------------------|:-----------------------------------------------------------|
-| `--yaml PATH`     | CL config yaml (relative or absolute).                                       | `configs/continual_learning/qwengr00t_er_lora_libero.yaml` |
-| `--run-id ID`     | Override the yaml's `run_id` (controls the checkpoint directory name).       | from yaml                                                  |
-| `--gpus SPEC`     | Either a count (`"2"`) or a comma-separated id list (`"1,2,3"`). A list pins `CUDA_VISIBLE_DEVICES`. | auto-detect                          |
-| `--port N`        | `accelerate` main process port.                                              | auto-select a free port                                    |
-| `--smoke`         | 5 steps × all tasks × batch 4 — verifies the pipeline end-to-end.            | off                                                        |
-| `--`              | Pass-through OmegaConf overrides (e.g. `--lora.rank=16`).                    | —                                                          |
-| `-h`, `--help`    | Full help text.                                                              | —                                                          |
+| Flag              | Description                                                                              | Default        |
+|:------------------|:-----------------------------------------------------------------------------------------|:---------------|
+| `--model MODEL`   | VLA backbone. Choices: `qwengr00t` \| `neurovla` \| `llamaoft` \| `paligemma`.          | `qwengr00t`    |
+| `--algo ALGO`     | CL algorithm. Choices: `er` \| `mir`.                                                    | `er`           |
+| `--dataset DS`    | Task stream. Choices: `libero_goal` \| `libero_long`.                                    | `libero_goal`  |
+| `--run-id ID`     | Override auto-generated run_id (`{model}_{algo}_{dataset}_v1`).                         | auto           |
+| `--gpus SPEC`     | Count (`"2"`) or id-list (`"1,2,3"`). A list pins `CUDA_VISIBLE_DEVICES`.               | auto-detect    |
+| `--port N`        | `accelerate` main process port.                                                          | auto-pick      |
+| `--smoke`         | 5 steps/task × batch 4 — end-to-end pipeline check.                                     | off            |
+| `--yaml PATH ...` | Advanced: one or more explicit yaml paths merged left-to-right. Skips three-axis logic.  | —              |
+| `--`              | Pass-through OmegaConf overrides (e.g. `--lora.rank=64`).                               | —              |
+| `-h`, `--help`    | Full help text.                                                                          | —              |
 
-**Available yaml presets** (under `configs/continual_learning/`):
+**Config layout** (under `configs/continual_learning/`):
 
-| Yaml                                          | Backbone     | Variant         | Algo | Stream             |
-|:----------------------------------------------|:-------------|:----------------|:-----|:-------------------|
-| `qwengr00t_er_lora_libero.yaml` (default)         | QwenGR00T    | LoRA (r=32)     | ER   | LIBERO-Goal        |
-| `qwengr00t_er_lora_libero_long.yaml`              | QwenGR00T    | LoRA            | ER   | LIBERO-Long (10)   |
-| `qwengr00t_mir_lora_libero_refresh50.yaml`        | QwenGR00T    | LoRA            | MIR  | LIBERO-Goal (77%)  |
-| `qwengr00t_mir_lora_libero_long_refresh50.yaml`   | QwenGR00T    | LoRA            | MIR  | LIBERO-Long (30%)  |
-| `qwengr00t_er_libero.yaml`                        | QwenGR00T    | Full-parameter  | ER   | LIBERO-Goal        |
-| `neurovla_er_lora_libero.yaml`                    | NeuroVLA     | LoRA            | ER   | LIBERO-Goal        |
-| `llamaoft_er_lora_libero.yaml`                    | LlamaOFT     | LoRA (r=16)     | ER   | LIBERO-Goal        |
-| `paligemma_oft_er_libero.yaml`                    | PaliGemmaOFT | Full-parameter  | ER   | LIBERO-Goal        |
-
-`qwengr00t_mir_lora_libero_refresh50.yaml` is the 77 % LIBERO-Goal recipe —
-buffer 1000, replay ratio 0.5, balanced sampling, MIR refresh every 50
-steps.  See [Reproduce the 77 % MIR recipe](#reproduce-the-77--mir-recipe-libero-goal-full-1010-matrix).
-
-**Algorithm selection** (in yaml):
-
-```yaml
-continual_learning:
-  algorithm:
-    name: er          # er | mir
-    # method-specific knobs — see per-algorithm sections above
 ```
+cl_base.yaml          ← shared trainer / CL / dataset defaults (ER + libero_goal)
+models/
+  qwengr00t.yaml      ← QwenGR00T-3B framework block + model-specific LR keys
+  neurovla.yaml       ← NeuroVLA  framework block + model-specific overrides
+  llamaoft.yaml       ← LlamaOFT  framework block + model-specific overrides
+  paligemma.yaml      ← PaliGemmaOFT framework block + model-specific overrides
+```
+
+The script auto-composes `cl_base.yaml + models/<model>.yaml` and injects
+algorithm / dataset dotlist overrides.  For custom configs, pass explicit paths:
+
+```bash
+bash scripts/run_continual_learning_scripts/run_cl_train.sh \
+    --yaml configs/continual_learning/cl_base.yaml \
+           configs/continual_learning/models/qwengr00t.yaml \
+    -- --continual_learning.steps_per_task=5000
+```
+
+**Algorithm selection** is via `--algo` flag (script generates overrides automatically):
+
+| `--algo` | What the script injects                                                        |
+|:---------|:-------------------------------------------------------------------------------|
+| `er`     | Base defaults (replay block already enabled in `cl_base.yaml`)                 |
+| `mir`    | Disables replay block; sets `algorithm.name=mir` with refresh=50 frozen recipe |
 
 ### `run_cl_eval.sh`
 
@@ -396,8 +419,8 @@ The evaluator automatically:
 ```
 scripts/run_continual_learning_scripts/run_cl_train.sh     (self-contained wrapper)
                                      │
-                                     │  resolves --yaml, loads .env,
-                                     │  probes framework + base VLM + CL method,
+                                     │  composes cl_base.yaml + models/<model>.yaml,
+                                     │  injects algo / dataset overrides, loads .env,
                                      │  exec accelerate launch
                                      ▼
 AlphaBrain/training/continual_learning/train.py            (trainer)

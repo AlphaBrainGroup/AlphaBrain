@@ -1,0 +1,39 @@
+# =============================================================================
+# Model overlay: LlamaOFT (~11 B — Llama-3.2-11B-Vision + MLP head)
+# Merge over cl_base.yaml — overrides model-specific keys.
+# Notable differences vs QwenGR00T:
+#   - per_device_batch_size: 2 (larger model; memory constraint)
+#   - gradient_accumulation_steps: 2 (effective batch = 4)
+#   - lora rank: 16 (vs 32 for smaller models)
+#   - lora vlm_module: llama_vl_interface
+# =============================================================================
+
+framework:
+  name: LlamaOFT
+  qwenvl:
+    base_vlm: ${oc.env:PRETRAINED_MODELS_DIR}/Llama-3.2-11B-Vision-Instruct
+  llamavl:
+    base_vlm: ${oc.env:PRETRAINED_MODELS_DIR}/Llama-3.2-11B-Vision-Instruct
+  action_model:
+    action_model_type: MLP
+    action_hidden_dim: 4096
+    action_dim: 7
+    future_action_window_size: 7
+    past_action_window_size: 0
+
+
+datasets:
+  vla_data:
+    per_device_batch_size: 2
+
+
+lora:
+  vlm_module: llama_vl_interface
+  rank: 16
+
+
+trainer:
+  gradient_accumulation_steps: 2
+  learning_rate:
+    llama_vl_interface: 1.0e-05
+    action_model: 1.0e-04
