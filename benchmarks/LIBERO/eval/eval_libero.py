@@ -143,6 +143,7 @@ def eval_libero(args: Args) -> None:
 
     # Start evaluation
     total_episodes, total_successes = 0, 0
+    task_breakdown = []
     for task_id in tqdm.tqdm(range(num_tasks_in_suite)):
         # Get task
         task = task_suite.get_task(task_id)
@@ -419,6 +420,15 @@ def eval_libero(args: Args) -> None:
             f"{_CB}Current total success rate:{_C0} {_sr_color(_total_sr)}"
             f"{_total_sr:.2f}{_C0} {_CD}({_total_sr*100:.1f}%){_C0}"
         )
+        task_breakdown.append(
+            {
+                "task_id": task_id,
+                "task_name": task_description,
+                "success_rate": _task_sr,
+                "attempts": task_episodes,
+                "successes": task_successes,
+            }
+        )
 
         # Explicitly close the environment to avoid EGL cleanup errors during GC
         env.close()
@@ -436,6 +446,19 @@ def eval_libero(args: Args) -> None:
     logging.info(
         f"{_CB}{'━' * 60}{_C0}"
     )
+
+    results = {
+        "task_suite": args.task_suite_name,
+        "checkpoint": args.pretrained_path,
+        "total_episodes": total_episodes,
+        "total_successes": total_successes,
+        "success_rate": _final_sr,
+        "task_breakdown": task_breakdown,
+    }
+    results_path = pathlib.Path(args.video_out_path) / "eval_results.json"
+    with open(results_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2, default=str)
+    logging.info(f"Results saved to {results_path}")
 
 
 def _get_libero_env(task, resolution, seed):

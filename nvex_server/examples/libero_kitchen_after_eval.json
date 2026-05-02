@@ -1,0 +1,57 @@
+{
+  "run_id": "eval_libero_after",
+  "project_id": "proj_libero_kitchen",
+  "benchmark_suite": "LIBERO_goal",
+  "checkpoint": "ckpt_v0.8",
+  "success_rate": 0.74,
+  "task_breakdown": [
+    {
+      "task_id": "libero_spatial",
+      "task_name": "libero_spatial",
+      "attempts": 10,
+      "successes": 7,
+      "success_rate": 0.7
+    },
+    {
+      "task_id": "libero_object",
+      "task_name": "libero_object",
+      "attempts": 10,
+      "successes": 8,
+      "success_rate": 0.8
+    },
+    {
+      "task_id": "libero_goal",
+      "task_name": "libero_goal",
+      "attempts": 10,
+      "successes": 7,
+      "success_rate": 0.7
+    },
+    {
+      "task_id": "libero_10",
+      "task_name": "libero_10",
+      "attempts": 10,
+      "successes": 8,
+      "success_rate": 0.8
+    }
+  ],
+  "failure_clusters": [
+    {
+      "cluster_id": "A",
+      "label": "Residual occlusion",
+      "failure_pattern": "occlusion",
+      "affected_tasks": ["libero_spatial"],
+      "share_of_failures": 0.22,
+      "failure_count": 5,
+      "severity": "medium"
+    },
+    {
+      "cluster_id": "B",
+      "label": "Long-horizon edge cases",
+      "failure_pattern": "long-horizon",
+      "affected_tasks": ["libero_10"],
+      "share_of_failures": 0.12,
+      "failure_count": 3,
+      "severity": "low"
+    }
+  ]
+}
