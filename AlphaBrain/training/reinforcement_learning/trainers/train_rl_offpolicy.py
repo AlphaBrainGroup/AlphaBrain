@@ -67,21 +67,15 @@ def run_rl_offpolicy(args):
 
     # ── Load frozen VLA on each rollout GPU ──────────────
     vla_copies = {}
+    # bf16 for both Qwen and Pi05: halves weight memory (~12→6 GB per copy)
+    # and matches the standalone eval setting (use_bf16=true), which scores
+    # 91%+ SR on the same Pi05 ckpts.
+    _vla_dtype = torch.bfloat16
+
     for i, gpu_id in enumerate(rollout_gpu_ids):
         device = f"cuda:{gpu_id}"
         logger.info(f"  Loading frozen VLA on GPU {gpu_id} ({i+1}/{n_rollout_gpus})...")
         vla = BaseFramework.from_pretrained(args.ckpt_path)
-        # Pi05's flow-matching diffusion (10 inference steps) is numerically
-        # sensitive — bf16 accumulates enough error over the steps to bias the
-        # final action chunk and drive rollout SR to 0. Keep Pi05 in float32;
-        # Qwen/Llama paths still use bf16 (no diffusion, less sensitive).
-        from AlphaBrain.training.reinforcement_learning.algos.RLT_ori.pi05_inference_zhanghe import is_pi05
-        # bf16 for Pi05 too: standalone eval (use_bf16: true) gets 91.7%+ SR
-        # on the same ckpt, so the dtype itself is fine. The earlier bf16
-        # SR=0 we saw in RL must be from a different bug in the rollout
-        # adapter, not numerics. Keep bf16 to halve memory pressure
-        # (12 → 6 GB on weights alone) and bisect the RL adapter under bf16.
-        _vla_dtype = torch.bfloat16
         vla = vla.to(_vla_dtype).to(device).eval()
         for p in vla.parameters():
             p.requires_grad_(False)
@@ -93,12 +87,6 @@ def run_rl_offpolicy(args):
         # (the rollout loop may have already loaded a frozen copy — replace it)
         logger.info(f"  Loading TRAINABLE VLA on train GPU {train_gpu_id} (full fine-tune)...")
         vla = BaseFramework.from_pretrained(args.ckpt_path)
-        # bf16 for Pi05 too: standalone eval (use_bf16: true) gets 91.7%+ SR
-        # on the same ckpt, so the dtype itself is fine. The earlier bf16
-        # SR=0 we saw in RL must be from a different bug in the rollout
-        # adapter, not numerics. Keep bf16 to halve memory pressure
-        # (12 → 6 GB on weights alone) and bisect the RL adapter under bf16.
-        _vla_dtype = torch.bfloat16
         vla = vla.to(_vla_dtype).to(train_device).train()
         if hasattr(vla, "qwen_vl_interface") and hasattr(vla.qwen_vl_interface, "model"):
             vla.qwen_vl_interface.model.gradient_checkpointing_enable()
@@ -107,49 +95,20 @@ def run_rl_offpolicy(args):
     elif train_gpu_id not in vla_copies:
         logger.info(f"  Loading frozen VLA on train GPU {train_gpu_id}...")
         vla = BaseFramework.from_pretrained(args.ckpt_path)
-        # bf16 for Pi05 too: standalone eval (use_bf16: true) gets 91.7%+ SR
-        # on the same ckpt, so the dtype itself is fine. The earlier bf16
-        # SR=0 we saw in RL must be from a different bug in the rollout
-        # adapter, not numerics. Keep bf16 to halve memory pressure
-        # (12 → 6 GB on weights alone) and bisect the RL adapter under bf16.
-        _vla_dtype = torch.bfloat16
         vla = vla.to(_vla_dtype).to(train_device).eval()
         for p in vla.parameters():
             p.requires_grad_(False)
         vla_copies[train_gpu_id] = vla
 
-    # Get model config from any VLA copy
-    ref_vla = vla_copies[rollout_gpu_ids[0]]
-    chunk_len = ref_vla.chunk_len
-    action_dim = ref_vla.config.framework.action_model.action_dim
-    # Hidden-dim source dispatches on framework type (Qwen vs Pi05/PaliGemma).
-    # Mirrors the dispatch in train_rlt_ori_pretrain.run_rlt_ori_pretrain.
-    if hasattr(ref_vla, "qwen_vl_interface"):
-        hidden_dim = ref_vla.qwen_vl_interface.model.config.hidden_size
-    elif hasattr(ref_vla, "vlm_interface") and hasattr(ref_vla.vlm_interface, "hidden_size"):
-        hidden_dim = ref_vla.vlm_interface.hidden_size
-    else:
-        hidden_dim = getattr(ref_vla, "_get_vlm_hidden_size", lambda: None)()
-        if hidden_dim is None:
-            raise RuntimeError(
-                f"Cannot determine VLM hidden_size for {type(ref_vla).__name__}; "
-                f"add explicit branch in train_rl_offpolicy."
-            )
-    # Action norm stats: Qwen uses VLA-internal q01/q99 (rollout will
-    # _unnormalize actor output back to env space). Pi05 outputs env-space
-    # actions directly from its flow-matching head + MEAN_STD unnorm
-    # (see pi05_inference_zhanghe.get_pi05_rl_state_and_action), so we use
-    # identity stats so _unnormalize becomes a no-op for Pi05.
+    # Backbone-agnostic metadata (Qwen vs Pi05): hidden_dim, action_norm_stats,
+    # chunk_len, action_dim. See pi05_inference_zhanghe.resolve_vla_metadata.
     from AlphaBrain.training.reinforcement_learning.algos.RLT_ori.pi05_inference_zhanghe import (
-        is_pi05, make_pi05_identity_action_norm_stats,
+        is_pi05, resolve_vla_metadata,
     )
+    ref_vla = vla_copies[rollout_gpu_ids[0]]
+    hidden_dim, action_norm_stats, chunk_len, action_dim = resolve_vla_metadata(ref_vla)
     if is_pi05(ref_vla):
-        action_norm_stats = make_pi05_identity_action_norm_stats(action_dim=action_dim)
         logger.info("Pi05 detected: using identity action_norm_stats (Pi05 returns env-space actions)")
-    else:
-        _norm_stats = ref_vla.norm_stats
-        _unnorm_key = next(iter(_norm_stats.keys()))
-        action_norm_stats = _norm_stats[_unnorm_key]["action"]
 
     # Actor chunk length: paper uses C < H (e.g. VLA H=50, actor C=10)
     # For LIBERO: VLA chunk=8, actor chunk=4 (re-plan every 4 steps)

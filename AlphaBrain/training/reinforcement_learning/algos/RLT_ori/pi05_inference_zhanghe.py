@@ -341,3 +341,41 @@ def is_pi05(vla) -> bool:
 def make_pi05_identity_action_norm_stats(action_dim: int = 7) -> dict:
     """Identity q01/q99 stats so rollout's `_unnormalize` is a no-op for Pi05."""
     return {"q01": [-1.0] * action_dim, "q99": [1.0] * action_dim}
+
+
+def resolve_vla_metadata(vla):
+    """Backbone-agnostic accessors used by both RL trainer and offline eval.
+
+    Returns: (hidden_dim, action_norm_stats, chunk_len, action_dim)
+
+    - hidden_dim: VLM last-hidden width. Qwen exposes it on
+      qwen_vl_interface.model.config; Pi05 (PaliGemma) exposes it on
+      vlm_interface or via _get_vlm_hidden_size.
+    - action_norm_stats: Qwen uses VLA-internal q01/q99 (rollout's
+      _unnormalize maps actor output back to env space). Pi05 outputs
+      env-space actions directly from the flow-matching head, so identity
+      stats turn _unnormalize into a no-op.
+    """
+    chunk_len = vla.chunk_len
+    action_dim = vla.config.framework.action_model.action_dim
+
+    if hasattr(vla, "qwen_vl_interface"):
+        hidden_dim = vla.qwen_vl_interface.model.config.hidden_size
+    elif hasattr(vla, "vlm_interface") and hasattr(vla.vlm_interface, "hidden_size"):
+        hidden_dim = vla.vlm_interface.hidden_size
+    else:
+        hidden_dim = getattr(vla, "_get_vlm_hidden_size", lambda: None)()
+        if hidden_dim is None:
+            raise RuntimeError(
+                f"Cannot determine VLM hidden_size for {type(vla).__name__}; "
+                f"add explicit branch in resolve_vla_metadata."
+            )
+
+    if is_pi05(vla):
+        action_norm_stats = make_pi05_identity_action_norm_stats(action_dim=action_dim)
+    else:
+        norm_stats = vla.norm_stats
+        unnorm_key = next(iter(norm_stats.keys()))
+        action_norm_stats = norm_stats[unnorm_key]["action"]
+
+    return hidden_dim, action_norm_stats, chunk_len, action_dim

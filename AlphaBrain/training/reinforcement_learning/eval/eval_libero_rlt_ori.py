@@ -218,36 +218,12 @@ def main():
     for p in frozen_vla.parameters():
         p.requires_grad_(False)
 
-    chunk_len = frozen_vla.chunk_len
-    action_dim = frozen_vla.config.framework.action_model.action_dim
-
-    # Hidden-dim source dispatches on framework type (Qwen vs Pi05/PaliGemma).
-    # Mirrors train_rl_offpolicy.run_rl_offpolicy.
-    if hasattr(frozen_vla, "qwen_vl_interface"):
-        hidden_dim = frozen_vla.qwen_vl_interface.model.config.hidden_size
-    elif hasattr(frozen_vla, "vlm_interface") and hasattr(frozen_vla.vlm_interface, "hidden_size"):
-        hidden_dim = frozen_vla.vlm_interface.hidden_size
-    else:
-        hidden_dim = getattr(frozen_vla, "_get_vlm_hidden_size", lambda: None)()
-        if hidden_dim is None:
-            raise RuntimeError(
-                f"Cannot determine VLM hidden_size for {type(frozen_vla).__name__}; "
-                f"add explicit branch in eval_libero_rlt_ori."
-            )
-
-    # Action norm stats: Qwen uses VLA-internal q01/q99; Pi05 outputs
-    # env-space actions directly from flow-matching head + MEAN_STD unnorm,
-    # so identity stats turn _unnormalize into a no-op.
     from AlphaBrain.training.reinforcement_learning.algos.RLT_ori.pi05_inference_zhanghe import (
-        is_pi05, make_pi05_identity_action_norm_stats,
+        is_pi05, resolve_vla_metadata,
     )
+    hidden_dim, action_norm_stats, chunk_len, action_dim = resolve_vla_metadata(frozen_vla)
     if is_pi05(frozen_vla):
-        action_norm_stats = make_pi05_identity_action_norm_stats(action_dim=action_dim)
         print("  Pi05 detected: using identity action_norm_stats")
-    else:
-        _norm_stats = frozen_vla.norm_stats
-        _unnorm_key = next(iter(_norm_stats.keys()))
-        action_norm_stats = _norm_stats[_unnorm_key]["action"]
     print(f"  hidden_dim={hidden_dim} chunk_len={chunk_len} action_dim={action_dim}")
 
     if args.bottleneck_dim != hidden_dim:
