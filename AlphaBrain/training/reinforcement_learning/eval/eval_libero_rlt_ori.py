@@ -34,8 +34,6 @@ from AlphaBrain.training.reinforcement_learning.envs.libero_env import MAX_STEPS
 from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_actor_critic import ActionTokenActor
 from AlphaBrain.training.reinforcement_learning.algos.RLT_ori import (
     RLTokenEncoderDecoder,
-    get_vla_hidden_states_and_action,
-    compact_by_mask,
 )
 
 
@@ -142,30 +140,12 @@ def _eval_one_task_rlt_ori(
                     prop_state = torch.tensor(
                         np.array(obs["state"], dtype=np.float32)
                     ).unsqueeze(0).to(device)
-                    # rlt_ori encoder path: Pi05 fuses prefix Gemma forward +
-                    # diffusion in one call (see pi05_inference_zhanghe);
-                    # Qwen path mirrors BatchInferenceServer._loop in
-                    # action_token_trainer.py for encoder_mode="rlt_ori".
                     from AlphaBrain.training.reinforcement_learning.algos.RLT_ori.pi05_inference_zhanghe import (
-                        is_pi05 as _is_pi05, get_pi05_rl_state_and_action,
+                        run_rlt_ori_inference,
                     )
-                    if _is_pi05(frozen_vla):
-                        rl_token, vla_actions = get_pi05_rl_state_and_action(
-                            frozen_vla, encoder,
-                            batch_images=images,
-                            instructions=[task_desc],
-                            batch_props=prop_state,
-                        )
-                    else:
-                        last_hidden, encoder_mask, _action_mask, _action_queries, vla_actions = \
-                            get_vla_hidden_states_and_action(
-                                frozen_vla,
-                                batch_images=images,
-                                instructions=[task_desc],
-                                image_only=True,
-                            )
-                        dense, kp_mask = compact_by_mask(last_hidden, encoder_mask)
-                        rl_token = encoder.encode(dense.float(), key_padding_mask=kp_mask)
+                    rl_token, vla_actions = run_rlt_ori_inference(
+                        frozen_vla, encoder, images, [task_desc], prop_state,
+                    )
 
                     if vla_actions.size(1) > chunk_len:
                         vla_actions = vla_actions[:, :chunk_len, :]

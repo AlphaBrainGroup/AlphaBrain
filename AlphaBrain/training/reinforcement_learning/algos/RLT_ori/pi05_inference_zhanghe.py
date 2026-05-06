@@ -343,6 +343,39 @@ def make_pi05_identity_action_norm_stats(action_dim: int = 7) -> dict:
     return {"q01": [-1.0] * action_dim, "q99": [1.0] * action_dim}
 
 
+def run_rlt_ori_inference(frozen_vla, encoder, batch_images, instructions, batch_props):
+    """Backbone-agnostic VLA forward + RL-token encoding for rlt_ori.
+
+    Dispatches on ``is_pi05(frozen_vla)``:
+      - Pi05: one fused PaliGemma prefix + flow-matching diffusion call
+        produces the RL token and action chunk together.
+      - Qwen: VLM forward gives full hidden states + action_queries +
+        vla_actions; compact image-token slice → encoder.encode.
+
+    Returns ``(rl_tokens, vla_actions)``. Used by both rollout and eval.
+    """
+    if is_pi05(frozen_vla):
+        return get_pi05_rl_state_and_action(
+            frozen_vla, encoder,
+            batch_images=batch_images,
+            instructions=instructions,
+            batch_props=batch_props,
+        )
+
+    from AlphaBrain.training.reinforcement_learning.algos.RLT_ori import (
+        get_vla_hidden_states_and_action, compact_by_mask,
+    )
+    last_hidden, encoder_mask, _act_mask, _action_queries, vla_actions = \
+        get_vla_hidden_states_and_action(
+            frozen_vla,
+            batch_images=batch_images, instructions=instructions,
+            image_only=True,
+        )
+    dense, kp_mask = compact_by_mask(last_hidden, encoder_mask)
+    rl_tokens = encoder.encode(dense.float(), key_padding_mask=kp_mask)
+    return rl_tokens, vla_actions
+
+
 def resolve_vla_metadata(vla):
     """Backbone-agnostic accessors used by both RL trainer and offline eval.
 

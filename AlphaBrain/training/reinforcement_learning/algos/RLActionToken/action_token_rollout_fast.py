@@ -47,31 +47,14 @@ def _run_vla_and_encode(
     """
     if encoder_mode == "rlt_ori":
         from AlphaBrain.training.reinforcement_learning.algos.RLT_ori.pi05_inference_zhanghe import (
-            is_pi05, get_pi05_rl_state_and_action,
+            run_rlt_ori_inference,
         )
-        if is_pi05(frozen_vla):
-            rl_tokens, vla_actions = get_pi05_rl_state_and_action(
-                frozen_vla, encoder,
-                batch_images=batch_images,
-                instructions=batch_instrs,
-                batch_props=props_t,
-            )
-            return rl_tokens, vla_actions, None
-        # Qwen rlt_ori path: one fused VLM forward gives full hidden
-        # state + action_queries + vla_actions; feed compacted image-token
-        # slice into the RL Token encoder.
-        from AlphaBrain.training.reinforcement_learning.algos.RLT_ori import (
-            get_vla_hidden_states_and_action, compact_by_mask,
+        rl_tokens, vla_actions = run_rlt_ori_inference(
+            frozen_vla, encoder, batch_images, batch_instrs, props_t,
         )
-        last_hidden, encoder_mask, _act_mask, action_queries, vla_actions = \
-            get_vla_hidden_states_and_action(
-                frozen_vla,
-                batch_images=batch_images, instructions=batch_instrs,
-                image_only=True,
-            )
-        dense, kp_mask = compact_by_mask(last_hidden, encoder_mask)
-        rl_tokens = encoder.encode(dense.float(), key_padding_mask=kp_mask)
-        return rl_tokens, vla_actions, action_queries
+        # action_queries unused on the rlt_ori path (Pi05 has none; Qwen
+        # path discards them inside run_rlt_ori_inference).
+        return rl_tokens, vla_actions, None
 
     # action_token mode: encoder takes the action-query slice directly.
     with torch.autocast("cuda", dtype=torch.bfloat16):
