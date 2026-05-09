@@ -1,6 +1,6 @@
 """Abstract base class for continual-learning algorithms.
 
-All CL algorithms (Experience Replay / EWC / DER / RETAIN / DWE / ...) implement
+All CL algorithms (Experience Replay / DER / RETAIN / DWE / ...) implement
 this interface.  The continual trainer (`AlphaBrain.training.continual_learning.train`)
 only talks to algorithms through this protocol, so new methods can be plugged
 in without touching the training loop.
@@ -10,11 +10,9 @@ Implemented
 - `ER`   (algorithms.rehearsal_based.er) — experience replay with reservoir
          sampling (uniform or per-task balanced).
 - `MIR`  (algorithms.rehearsal_based.mir) — interference-aware replay.
-- `EWC`  (algorithms.regularization_based.ewc) — Fisher-weighted L2 penalty.
 
 Planned
 -------
-- `EWC`      Elastic Weight Consolidation   (Kirkpatrick et al. 2017)
 - `DER`      Dark Experience Replay         (Buzzega et al. 2020)
 - `RETAIN`   Weight Merging / model souping (Wortsman et al. 2022, variants)
 - `DWE`      Dynamic Weight Expansion       (per-task adapters)
@@ -31,14 +29,13 @@ Per-step hooks (inner training loop):
     modify_batch(batch, task_id)  — return the batch the model will consume
                                     (ER / DER inject replay samples here).
     compute_penalty(model)        — return a scalar added to the task loss
-                                    (EWC / SI regularizers).
+                                    (regularizer-based methods).
 
 Task-level hooks (bracket each CL task):
     on_task_start(context)        — before training starts on a new task
                                     (DWE expands the model here).
     on_task_end(context)          — after a task finishes training
-                                    (ER populates buffer, EWC computes Fisher,
-                                    RETAIN merges weights).
+                                    (ER populates buffer, RETAIN merges weights).
 
 On resume, the trainer replays `on_task_end` for each completed task so
 algorithms can rebuild state not captured in `state_dict`.
@@ -109,9 +106,9 @@ class CLAlgorithm(ABC):
     def compute_penalty(self, model: Any) -> Optional[torch.Tensor]:
         """Return a scalar penalty to add to the task loss, or None.
 
-        Typical uses:
-          * EWC:  λ · Σ F_i · (θ_i − θ*_i)²
-          * SI:   λ · Σ Ω_i · (θ_i − θ*_i)²
+        Typical uses (regularization-based methods):
+          * Fisher-weighted L2:  λ · Σ F_i · (θ_i − θ*_i)²
+          * SI path integral:    λ · Σ Ω_i · (θ_i − θ*_i)²
 
         Default: None (no extra penalty).
         """
@@ -151,7 +148,6 @@ class CLAlgorithm(ABC):
 
         Typical uses:
           * ER:     populate the buffer from `context.task_dataset`.
-          * EWC:    compute Fisher on `context.task_dataloader`, snapshot θ*.
           * RETAIN: merge the newly-trained weights into the running model.
 
         Default: no-op.

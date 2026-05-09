@@ -1,7 +1,7 @@
 # Continual Learning
 
 Train a single VLA backbone sequentially over the four LIBERO task
-suites with a pluggable family of CL algorithms (ER / MIR / EWC)
+suites with a pluggable family of CL algorithms (ER / MIR)
 selectable from YAML.  Supports 4 architectures × LoRA / full-parameter.
 
 ---
