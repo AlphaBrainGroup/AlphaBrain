@@ -38,23 +38,29 @@ team that wants to *use* the recipe rather than reproduce the paper:
    hidden state. The encoder doesn't have to re-attend to language
    tokens — it's already conditioned. Same actor, all 10 tasks.
 
-2. **VLM-backbone portability — keep the actor independent of `H`.**
-   The paper keeps `z_rl ∈ ℝ^{1 × H}` at the VLA's hidden dim.
-   That dim varies per backbone: Qwen2.5-VL-3B has `H=2048`,
-   π0.5/PaliGemma has `H=2304`, future VLAs (Llama-VLA, Idefics, MiniCPM-VL,
-   etc.) span a wide range. With pure `RLT`, swapping VLA backbone
-   forces you to:
-   - Redesign the actor/critic input layer (different `H` → different
-     first-layer weight shape, can't reuse pretrained actor).
-   - Re-tune actor/critic depth and width, since "good" hidden sizes
-     scale with the input width.
-   - Repeat any hyperparameter sweep that depended on the input shape.
+2. **VLM-backbone integration cost — the encoder's surface area.**
+   `RLT`'s encoder consumes the **full VLM token sequence** `(L, H)`,
+   so adding a new VLA backbone is genuinely invasive:
+   - You have to understand that VLA's specific token layout — how it
+     interleaves image patches, language, special markers, action
+     placeholders — and write a backbone-specific feature extractor that
+     returns the right slice plus the right attention mask. Compare
+     `algos/RLT/vla_features.py` (Qwen, ~260 lines) against
+     `algos/RLT/vla_features_pi05_zhanghe.py` (Pi05, ~140 lines): two
+     largely independent implementations, written against two different
+     VLM forward signatures.
+   - The encoder must then be re-pretrained from scratch on that VLM's
+     tokens (no transfer — the `(L, H)` shape, positional embeddings,
+     and attention statistics all change).
 
-   `RLT_a` inserts an explicit `Linear(H → D=256)` projection after the
-   encoder so the actor/critic see a **fixed `D=256` RL token regardless
-   of backbone**. Swapping Qwen ↔ Pi05 ↔ (anything else) only changes
-   the encoder side — the TD3 actor architecture, hyperparameters, and
-   pretrained weights port over unchanged.
+   `RLT_a`'s encoder consumes only the **action-query slice** `(M, H)`,
+   which is a much smaller and more uniform target. Adding a new VLA
+   only needs that backbone to expose its action-query hidden states
+   (one method on the framework) — no need to model the full token
+   layout. The encoder code itself doesn't change across backbones; the
+   per-VLM work is a small adapter. The extra `Linear(H → D=256)` further
+   keeps the downstream actor/critic at fixed width, so actor pretraining
+   and hyperparameters transfer across backbones too.
 
 `RLT` is the more recent addition: it's closer to the paper's exact
 construction (full VLM tokens in, no extra projection, encoder-decoder
