@@ -15,7 +15,7 @@ The reference is organised to mirror the top-level modules of the `AlphaBrain/` 
 | [Model › Modules](./model_modules.md) | `AlphaBrain/model/modules/` | Building-block components: action heads, VLM backbones, world-model encoders, projectors, DINO |
 | [Training › General](./training.md) | `AlphaBrain/training/` | `train_alphabrain*.py` entrypoints, `trainer_utils/`, and shared training scripts |
 | [Training › Continual Learning](./training_continual_learning.md) | `AlphaBrain/training/continual_learning/` | Continual learning algorithms, replay buffer, and task sequences |
-| [Training › Reinforcement Learning](./training_reinforcement_learning.md) | `AlphaBrain/training/reinforcement_learning/` | RLActionToken online RL training, environments, rollout, and algorithm implementations |
+| [Training › Reinforcement Learning](./training_reinforcement_learning.md) | `AlphaBrain/training/reinforcement_learning/` | RLT_a online RL training, environments, rollout, and algorithm implementations |
 
 ## How to read each page
 

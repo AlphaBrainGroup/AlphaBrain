@@ -3,13 +3,13 @@
 # frozen VLA hidden states). Strict-reference mode: --image_only
 # keeps only image-token positions as z_{1:M} (Fig. 2, footnote 1).
 #
-# Duration model — matches the sibling RLActionToken pretrain:
+# Duration model — matches the sibling RLT_a pretrain:
 #   - `--pretrain_max_steps N`: stop after N optimizer.step() calls.
 #     When >0 this is the hard budget; --pretrain_epochs becomes an
 #     upper cap that's usually never hit.
 #   - `--pretrain_epochs E`: max # of dataset passes. If you want a
 #     pure epoch-driven run, set MAX_STEPS=0 and dial EPOCHS.
-# The sibling RLActionToken pretrain used 500 epochs × 3000 obs / bs 32
+# The sibling RLT_a pretrain used 500 epochs × 3000 obs / bs 32
 # ≈ 46k steps. We default here to MAX_STEPS=30000 to match that order
 # (≈ 30 min on an A800 for the 1-traj LIBERO-goal demo set at batch 8).
 set -euo pipefail

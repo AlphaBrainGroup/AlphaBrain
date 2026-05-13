@@ -1,4 +1,4 @@
-"""Checkpoint save helper shared by all RLActionToken training phases."""
+"""Checkpoint save helper shared by all RLT_a training phases."""
 import logging
 from pathlib import Path
 
@@ -15,5 +15,5 @@ def save_rlt_checkpoint(encoder, actor, critic, iteration, output_dir, phase="rl
         torch.save(actor.state_dict(), str(ckpt_dir / "actor.pt"))
     if critic is not None:
         torch.save(critic.state_dict(), str(ckpt_dir / "critic.pt"))
-    logger.info(f"Saved RLActionToken checkpoint -> {ckpt_dir}")
+    logger.info(f"Saved RLT_a checkpoint -> {ckpt_dir}")
     return str(ckpt_dir)

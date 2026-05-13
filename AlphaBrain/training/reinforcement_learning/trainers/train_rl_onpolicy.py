@@ -26,9 +26,9 @@ from AlphaBrain.model.framework.base_framework import BaseFramework
 from AlphaBrain.training.reinforcement_learning.common.ckpt_io import save_rlt_checkpoint
 from AlphaBrain.training.reinforcement_learning.eval.eval_helpers import _eval_distributed
 from AlphaBrain.training.reinforcement_learning.envs.libero_env import MAX_STEPS, get_suite_info
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_actor_critic import ActionTokenActor, ActionTokenCritic
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_encoder_decoder import ActionTokenEncoderDecoder
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_trainer import action_token_collect_group, action_token_ppo_loss
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_actor_critic import ActionTokenActor, ActionTokenCritic
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_encoder_decoder import ActionTokenEncoderDecoder
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer import action_token_collect_group, action_token_ppo_loss
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ def run_rl(args):
     """Phase 2 on-policy: multi-GPU parallel rollout + PPO update.
 
     Each GPU loads a frozen VLA copy and runs its own env workers to collect
-    episodes in parallel. All episodes are gathered, then the tiny RLActionToken
+    episodes in parallel. All episodes are gathered, then the tiny RLT_a
     network update happens on every rank (identical, since network is tiny).
 
     6 GPUs = 6× rollout throughput (the actual bottleneck is CPU env.step).
@@ -68,7 +68,7 @@ def run_rl(args):
     n_tasks = suite_info["n_tasks"]
     max_steps = MAX_STEPS[args.suite]
 
-    # Create RLActionToken modules (tiny, same on all ranks)
+    # Create RLT_a modules (tiny, same on all ranks)
     enc_dec = ActionTokenEncoderDecoder(
         input_dim=hidden_dim,
         bottleneck_dim=args.bottleneck_dim,
@@ -102,7 +102,7 @@ def run_rl(args):
         critic_params = sum(p.numel() for p in critic.parameters())
         vla_params = sum(p.numel() for p in frozen_vla.parameters())
         logger.info(f"Frozen VLA: {vla_params / 1e9:.2f}B params × {world_size} GPUs")
-        logger.info(f"RLActionToken trainable: encoder={enc_params / 1e6:.2f}M, "
+        logger.info(f"RLT_a trainable: encoder={enc_params / 1e6:.2f}M, "
                     f"actor={actor_params / 1e6:.2f}M, critic={critic_params / 1e6:.2f}M")
         logger.info(f"Rollout parallelism: {world_size} ranks × {args.num_envs} envs × "
                     f"{args.G} episodes/rank = {world_size * args.G} episodes/iter")

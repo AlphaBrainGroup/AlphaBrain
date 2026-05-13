@@ -1,16 +1,16 @@
-# RLActionToken — Online RL Fine-tuning for VLA
+# RLT_a — Online RL Fine-tuning for VLA
 
-Minimal pipeline for RLActionToken on LIBERO:
+Minimal pipeline for RLT_a on LIBERO:
 
 1. **`run_action_token_5traj_alltasks.sh`** — End-to-end training (Phase 1 encoder pretrain + Phase 2 off-policy TD3 RL)
 2. **`run_eval_action_token.sh`** — Parallel per-task eval over a training run
 
 > **Naming note.** The module directory was renamed from `RLT` to
-> `RLActionToken` to avoid implying a line-by-line reproduction of the
+> `RLT_a` to avoid implying a line-by-line reproduction of the
 > RL Token paper (Physical Intelligence, 2026). This release is inspired by
 > the paper but deviates in several concrete places (input, bottleneck,
 > decoder, pretrain data). See
-> [`AlphaBrain/training/reinforcement_learning/algos/RLActionToken/README.md`](../../AlphaBrain/training/reinforcement_learning/algos/RLActionToken/README.md)
+> [`AlphaBrain/training/reinforcement_learning/algos/RLT_a/README.md`](../../AlphaBrain/training/reinforcement_learning/algos/RLT_a/README.md)
 > for the full design notes and the delta against the paper.
 
 ---
@@ -129,8 +129,8 @@ rollout_passes   = ceil(G_per_task / num_envs_per_task)    # sequential chunks i
 
 A few honest notes on what this release is — and what it isn't:
 
-- **Why we open-source RLActionToken first.** One of the reasons we open-source RLActionToken is that we believe the idea itself — compressing VLA hidden states through an information bottleneck and then editing a reference policy with residual actions — is novel and genuinely promising, and worth sharing with the community at an early stage. This does **not** mean we consider GRPO / PPO any less important; on the contrary, we view them as core algorithms for VLA online RL, and we will progressively update and release our implementations of them in subsequent versions.
-- **On reproducing the RL Token paper in simulation.** Faithfully reproducing every detail from the original RL Token paper inside a simulator is genuinely hard — in particular the carefully curated tuning datasets and the timely human-in-the-loop interventions described in the paper are difficult to replicate one-for-one in a purely automated sim setup. The recipe we ship here (`RLActionToken`) is therefore a best-effort simulation adaptation, not a line-by-line reproduction of the paper. See the algo README under `AlphaBrain/training/reinforcement_learning/algos/RLActionToken/` for the concrete deltas.
+- **Why we open-source RLT_a first.** One of the reasons we open-source RLT_a is that we believe the idea itself — compressing VLA hidden states through an information bottleneck and then editing a reference policy with residual actions — is novel and genuinely promising, and worth sharing with the community at an early stage. This does **not** mean we consider GRPO / PPO any less important; on the contrary, we view them as core algorithms for VLA online RL, and we will progressively update and release our implementations of them in subsequent versions.
+- **On reproducing the RL Token paper in simulation.** Faithfully reproducing every detail from the original RL Token paper inside a simulator is genuinely hard — in particular the carefully curated tuning datasets and the timely human-in-the-loop interventions described in the paper are difficult to replicate one-for-one in a purely automated sim setup. The recipe we ship here (`RLT_a`) is therefore a best-effort simulation adaptation, not a line-by-line reproduction of the paper. See the algo README under `AlphaBrain/training/reinforcement_learning/algos/RLT_a/` for the concrete deltas.
 - **What we believe matters most.** Even so, we believe that collecting high-quality positive trajectories is one of the most critical open problems in this area — good positives do far more than clever loss tricks. Going forward we plan to:
   1. broaden the online-RL algorithm coverage (GRPO, PPO, and RLTginal);
   2. improve tooling for positive-sample collection, filtering, and curation on both sim and real-world data;

@@ -27,7 +27,7 @@ Eq. 2 (Decoder, autoregressive reconstruction):
 The decoder here uses cross-attention against ``z_rl`` as memory (the
 reference's encoder-decoder construction), with a causally-masked target
 stream of shifted stop-gradient VLA tokens. This contrasts with the
-sibling ``RLActionToken`` decoder, which is a self-attention-only causal
+sibling ``RLT_a`` decoder, which is a self-attention-only causal
 transformer with ``z_rl`` as a prefix.
 """
 

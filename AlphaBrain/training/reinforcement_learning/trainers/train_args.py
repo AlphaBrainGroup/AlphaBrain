@@ -1,4 +1,4 @@
-"""CLI args for RLActionToken training (all three phases)."""
+"""CLI args for RLT_a training (all three phases)."""
 import argparse
 
 
@@ -25,11 +25,11 @@ def parse_args():
                    help="Train on ALL tasks in the suite (overrides --task_id). "
                         "Each iteration collects episodes from every task.")
 
-    # RLActionToken architecture
+    # RLT_a architecture
     p.add_argument("--encoder_mode", type=str, default="action_token",
                    choices=["action_token", "rlt"],
                    help="Which encoder family to use in Phase 2. "
-                        "'action_token' (default): pragmatic RLActionToken "
+                        "'action_token' (default): pragmatic RLT_a "
                         "encoder that consumes the chunk_len action-query slice. "
                         "'rlt': reference RL Token encoder that consumes the "
                         "full VLM image-token sequence and keeps z_rl at the VLA "

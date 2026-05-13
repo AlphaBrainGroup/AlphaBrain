@@ -2,7 +2,7 @@
 """ActionToken training entry for QwenOFT on LIBERO.
 
 Phases:
-  --phase pretrain          Encoder-decoder pretraining via reconstruction loss (RLActionToken track)
+  --phase pretrain          Encoder-decoder pretraining via reconstruction loss (RLT_a track)
   --phase pretrain_rlt  Phase-1 pretraining that follows the RL Token reference line-by-line
   --phase rl                On-policy multi-GPU PPO update (legacy; PPO/GRPO is a TODO)
   --phase rl_offpolicy      Off-policy TD3 with split rollout/training GPUs (production)

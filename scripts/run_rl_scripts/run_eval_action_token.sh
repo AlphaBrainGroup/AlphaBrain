@@ -1,5 +1,5 @@
 #!/bin/bash
-# Eval an RLActionToken run: 10 libero_goal tasks split across 3 GPUs, then
+# Eval an RLT_a run: 10 libero_goal tasks split across 3 GPUs, then
 # aggregated into <RUN_DIR>/eval_<ITER>/summary.json.
 # Edit VLA_CKPT / RUN_DIR / ITER / GPU_IDS below, or override via argv.
 set -euo pipefail
@@ -45,7 +45,7 @@ SUITE=libero_goal
 ARCH_ARGS="--bottleneck_dim 256 --encoder_layers 2 --encoder_heads 4 --actor_hidden_dim 512 --ref_dropout 0.5 --fixed_std 0.1 --prop_dim 8"
 
 if [ ! -d "${ACTION_TOKEN_CKPT}" ]; then
-    echo "ERROR: RLActionToken ckpt not found: ${ACTION_TOKEN_CKPT}" >&2
+    echo "ERROR: RLT_a ckpt not found: ${ACTION_TOKEN_CKPT}" >&2
     exit 1
 fi
 if [ ! -d "${VLA_CKPT}" ]; then
@@ -54,7 +54,7 @@ if [ ! -d "${VLA_CKPT}" ]; then
 fi
 
 echo "============================================================"
-echo " Eval RLActionToken (${ITER}) | ${N_EPS} eps/task, ${NUM_WORKERS} workers/shard"
+echo " Eval RLT_a (${ITER}) | ${N_EPS} eps/task, ${NUM_WORKERS} workers/shard"
 echo "   ckpt: ${ACTION_TOKEN_CKPT}"
 echo "   vla:  ${VLA_CKPT}"
 echo "   out:  ${OUT_DIR}"

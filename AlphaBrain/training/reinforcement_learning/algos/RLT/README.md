@@ -3,7 +3,7 @@
 This module implements the encoder-decoder and Phase-1 reconstruction
 training of the **RL Token** recipe (Physical Intelligence, 2026) as
 close to the reference as this codebase permits. It is the sibling of
-the production track `RLActionToken/` and is meant to be *read* against
+the production track `RLT_a/` and is meant to be *read* against
 that module's `README.md`, which documents that track's pragmatic
 deviations.
 
@@ -160,9 +160,9 @@ match at load time.
 
 ---
 
-## Relationship to `RLActionToken/`
+## Relationship to `RLT_a/`
 
-| | `RLActionToken` (production) | `RLT` (this module) |
+| | `RLT_a` (production) | `RLT` (this module) |
 |---|---|---|
 | Encoder input | Action-query slice `(B, M=chunk_len, H)` | Full VLM tokens `(B, L, H)` |
 | z_rl width | Projected to `D = 256` | Kept at VLA hidden dim `H` |

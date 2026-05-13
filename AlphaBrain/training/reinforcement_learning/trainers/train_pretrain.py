@@ -10,8 +10,8 @@ from accelerate.utils import set_seed
 
 from AlphaBrain.model.framework.base_framework import BaseFramework
 from AlphaBrain.training.reinforcement_learning.envs.libero_env import MAX_STEPS, get_suite_info
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_encoder_decoder import ActionTokenEncoderDecoder
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_trainer import (
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_encoder_decoder import ActionTokenEncoderDecoder
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer import (
     collect_observations_fast,
     extract_action_queries_from_obs,
 )
@@ -56,7 +56,7 @@ def run_pretrain(args):
     ).to(device)
 
     n_params = sum(p.numel() for p in enc_dec.parameters())
-    logger.info(f"RLActionToken Encoder-Decoder: {n_params / 1e6:.2f}M parameters")
+    logger.info(f"RLT_a Encoder-Decoder: {n_params / 1e6:.2f}M parameters")
 
     optimizer = torch.optim.AdamW(enc_dec.parameters(), lr=args.pretrain_lr)
 

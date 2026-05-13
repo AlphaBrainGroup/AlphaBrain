@@ -15,7 +15,7 @@ where
 
 This trainer prefers demonstration data (the reference's choice); if no
 demo config is provided it falls back to the random-rollout observation
-collector shared with the sibling ``RLActionToken`` track, in which case
+collector shared with the sibling ``RLT_a`` track, in which case
 only ``α = 0`` is meaningful.
 """
 
@@ -43,7 +43,7 @@ from AlphaBrain.training.reinforcement_learning.algos.RLT import (
     get_vla_hidden_states,
     pad_mask_from_attention,
 )
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_trainer import (
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer import (
     collect_observations_fast,
 )
 

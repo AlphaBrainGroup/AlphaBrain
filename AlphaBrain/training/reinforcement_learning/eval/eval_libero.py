@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone offline eval for an RLActionToken iter checkpoint on LIBERO.
+"""Standalone offline eval for an RLT_a iter checkpoint on LIBERO.
 
 Loads:
   - frozen QwenOFT VLA from --vla_ckpt
@@ -26,15 +26,15 @@ import torch
 from AlphaBrain.model.framework.base_framework import BaseFramework
 from AlphaBrain.training.reinforcement_learning.eval.eval_helpers import _eval_deterministic_local
 from AlphaBrain.training.reinforcement_learning.envs.libero_env import MAX_STEPS, get_suite_info
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_actor_critic import ActionTokenActor
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_encoder_decoder import ActionTokenEncoderDecoder
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_actor_critic import ActionTokenActor
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_encoder_decoder import ActionTokenEncoderDecoder
 
 
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--vla_ckpt", required=True, help="QwenOFT SFT base checkpoint dir")
     p.add_argument("--action_token_ckpt", required=True,
-                   help="RLActionToken iter checkpoint dir containing encoder.pt and actor.pt")
+                   help="RLT_a iter checkpoint dir containing encoder.pt and actor.pt")
     p.add_argument("--suite", default="libero_goal")
     p.add_argument("--n_eps_per_task", type=int, default=20)
     p.add_argument("--gpu", type=int, default=0)

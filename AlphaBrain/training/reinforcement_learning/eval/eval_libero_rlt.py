@@ -31,7 +31,7 @@ import torch
 
 from AlphaBrain.model.framework.base_framework import BaseFramework
 from AlphaBrain.training.reinforcement_learning.envs.libero_env import MAX_STEPS, get_suite_info
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_actor_critic import ActionTokenActor
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_actor_critic import ActionTokenActor
 from AlphaBrain.training.reinforcement_learning.algos.RLT import (
     RLTokenEncoderDecoder,
 )

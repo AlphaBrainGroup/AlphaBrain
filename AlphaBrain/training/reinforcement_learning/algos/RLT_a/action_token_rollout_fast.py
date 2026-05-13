@@ -22,9 +22,9 @@ import numpy as np
 import torch
 
 from AlphaBrain.training.reinforcement_learning.envs.persistent_env_pool import PersistentEnvPool
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_encoder_decoder import ActionTokenEncoderDecoder
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_actor_critic import ActionTokenActor, ActionTokenCritic
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_trainer import ActionTokenEpisode, ActionTokenStepRecord
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_encoder_decoder import ActionTokenEncoderDecoder
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_actor_critic import ActionTokenActor, ActionTokenCritic
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer import ActionTokenEpisode, ActionTokenStepRecord
 from AlphaBrain.training.reinforcement_learning.common.rollout import _unnormalize, _postprocess_action, DUMMY_ACTION
 
 logger = logging.getLogger(__name__)

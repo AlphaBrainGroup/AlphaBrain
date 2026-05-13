@@ -1,5 +1,5 @@
 """
-ActionToken Trainer: Two-phase training for the RLActionToken variant.
+ActionToken Trainer: Two-phase training for the RLT_a variant.
 
 Phase 1 — Encoder Pretraining:
   Freeze VLA, train encoder-decoder via reconstruction loss on rollout data.
@@ -27,8 +27,8 @@ from PIL import Image
 
 from AlphaBrain.training.reinforcement_learning.envs.libero_env import LiberoEnv
 from AlphaBrain.training.reinforcement_learning.common.replay_buffer import ReplayBuffer
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_encoder_decoder import ActionTokenEncoderDecoder
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_actor_critic import ActionTokenActor, ActionTokenCritic, ActionTokenQCritic
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_encoder_decoder import ActionTokenEncoderDecoder
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_actor_critic import ActionTokenActor, ActionTokenCritic, ActionTokenQCritic
 from AlphaBrain.training.reinforcement_learning.common.rollout import _unnormalize, _postprocess_action, _save_video
 
 logger = logging.getLogger(__name__)
@@ -243,7 +243,7 @@ class BatchInferenceServer:
 
 @dataclass
 class ActionTokenStepRecord:
-    """One inference step during RLActionToken rollout."""
+    """One inference step during RLT_a rollout."""
     rl_token: torch.Tensor        # (1, D) detached cpu
     vla_action: torch.Tensor      # (chunk_len, action_dim) detached cpu
     action_taken: torch.Tensor    # (chunk_len, action_dim) detached cpu
@@ -451,7 +451,7 @@ def extract_action_queries_dataset(
 
 
 # ------------------------------------------------------------------
-# Phase 2: RLActionToken Rollout — frozen VLA + encoder + actor
+# Phase 2: RLT_a Rollout — frozen VLA + encoder + actor
 # ------------------------------------------------------------------
 
 def _action_token_rollout_one(
@@ -472,7 +472,7 @@ def _action_token_rollout_one(
     store_images: bool = False,
     reward_coef: float = 1.0,
 ) -> ActionTokenEpisode:
-    """Run one episode with RLActionToken actor via BatchInferenceServer.
+    """Run one episode with RLT_a actor via BatchInferenceServer.
 
     Chunk subsampling (paper): at stride-2 positions (2, 4, 6) within each chunk,
     call batch_server.infer() on the intermediate observation to get (rl_token, vla_action).
@@ -602,7 +602,7 @@ def action_token_collect_group(
     reward_coef: float = 1.0,
 ) -> List[ActionTokenEpisode]:
     """
-    Collect G episodes using RLActionToken policy.
+    Collect G episodes using RLT_a policy.
 
     Uses BatchInferenceServer for GPU inference: all num_envs env threads submit
     requests concurrently; a single background thread batches them into one GPU
@@ -716,7 +716,7 @@ def action_token_collect_group(
 
 
 # ------------------------------------------------------------------
-# Phase 2: PPO-clip loss for RLActionToken small networks
+# Phase 2: PPO-clip loss for RLT_a small networks
 # ------------------------------------------------------------------
 
 def compute_action_token_gae(
@@ -725,7 +725,7 @@ def compute_action_token_gae(
     gae_lambda: float = 0.95,
 ):
     """
-    Compute GAE advantages and returns for a single RLActionToken episode.
+    Compute GAE advantages and returns for a single RLT_a episode.
 
     Returns:
         advantages: list of floats (len = finish_step)
@@ -770,7 +770,7 @@ def action_token_ppo_loss(
     device: str = "cuda",
 ):
     """
-    Compute PPO loss on a batch of RLActionToken episodes.
+    Compute PPO loss on a batch of RLT_a episodes.
 
     Only encoder + actor + critic have gradients.
     Optionally add reconstruction loss as regularizer.

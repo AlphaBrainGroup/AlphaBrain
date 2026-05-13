@@ -30,14 +30,14 @@ from AlphaBrain.training.reinforcement_learning.eval.eval_helpers_rlt_zhanghe im
 )
 from AlphaBrain.training.reinforcement_learning.envs.libero_env import MAX_STEPS, get_suite_info
 from AlphaBrain.training.reinforcement_learning.common.replay_buffer import ReplayBuffer
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_actor_critic import (
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_actor_critic import (
     ActionTokenActor,
     ActionTokenCritic,
     ActionTokenQCritic,
     soft_update_target,
 )
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_encoder_decoder import ActionTokenEncoderDecoder
-from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_trainer import push_episodes_to_buffer
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_encoder_decoder import ActionTokenEncoderDecoder
+from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer import push_episodes_to_buffer
 
 logger = logging.getLogger(__name__)
 
@@ -245,7 +245,7 @@ def run_rl_offpolicy(args):
     if args.use_steplock:
         # Step-lock mode: persistent env pools (no BatchInferenceServer needed)
         from AlphaBrain.training.reinforcement_learning.envs.persistent_env_pool import PersistentEnvPool
-        from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_rollout_fast import (
+        from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_rollout_fast import (
             action_token_collect_group_steplock,
             action_token_collect_multitask_steplock,
         )
@@ -282,7 +282,7 @@ def run_rl_offpolicy(args):
         # No pre-warm needed — parallel reset in rollout handles MuJoCo init.
     else:
         # Async mode: BatchInferenceServer per GPU
-        from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_trainer import BatchInferenceServer
+        from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer import BatchInferenceServer
         rollout_servers = {}
         rollout_env_pools = {}  # not used in async mode
         for gpu_id in rollout_gpu_ids:
@@ -671,7 +671,7 @@ def run_rl_offpolicy(args):
                                     f"{len(eps)} eps, {n_s} success")
             else:
                 # Async mode: use ThreadPoolExecutor
-                from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_trainer import action_token_collect_group
+                from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer import action_token_collect_group
                 all_eps = []
                 per_task_sr = {}
                 futs = {}
@@ -750,7 +750,7 @@ def run_rl_offpolicy(args):
     last_completed_iter = 0  # last training iter whose body fully ran; drives final-ckpt name
     sync_every_n_updates = 500  # sync weights to rollout every N TD3 updates
 
-    from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_trainer import (
+    from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer import (
         action_token_td_actor_update,
         action_token_td_critic_update,
     )
@@ -890,7 +890,7 @@ def run_rl_offpolicy(args):
             # ── VLA fine-tune step ──
             if (args.finetune_vla and optimizer_vla is not None
                     and iteration % args.vla_update_freq == 0):
-                from AlphaBrain.training.reinforcement_learning.algos.RLActionToken.action_token_trainer import vla_finetune_step
+                from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer import vla_finetune_step
                 train_vla = vla_copies[train_gpu_id]
                 train_vla.train()
                 optimizer_vla.zero_grad()

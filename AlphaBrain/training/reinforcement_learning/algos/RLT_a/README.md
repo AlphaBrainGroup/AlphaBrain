@@ -1,7 +1,7 @@
-# RLActionToken — Design Notes & Delta vs. the RL Token Paper
+# RLT_a — Design Notes & Delta vs. the RL Token Paper
 
 This directory contains our implementation of an off-policy, bottleneck-token
-online RL recipe for VLA models, under the name **`RLActionToken`**. The name
+online RL recipe for VLA models, under the name **`RLT_a`**. The name
 was deliberately chosen to be distinct from the **RL Token** paper
 (Physical Intelligence, 2026), whose high-level idea inspired this module
 but whose implementation we do **not** reproduce line-by-line.
@@ -54,7 +54,7 @@ obs ──► frozen VLA ──► action-query hidden states (M × H)
 
 ## Delta vs. the RL Token paper
 
-`RLActionToken` keeps the paper's high-level shape — a frozen VLA feeds a
+`RLT_a` keeps the paper's high-level shape — a frozen VLA feeds a
 compact state into a small TD3 actor/critic — but differs in several concrete
 choices. If you are comparing this code against the paper, please read this
 section before assuming equivalence.
@@ -129,7 +129,7 @@ literally — image-token input, `1 × 2048` RL token with no extra projection,
 cross-attention decoder, demo-driven Phase-1, joint VLA fine-tune. It is
 **not yet stable enough to release**; when it lands it will ship as a
 sibling module rather than a replacement, so existing users of
-`RLActionToken` are not broken.
+`RLT_a` are not broken.
 
 ---
 

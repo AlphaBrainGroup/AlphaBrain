@@ -4,7 +4,7 @@ Reference: "RL Token: Bootstrapping Online RL with Vision-Language-Action
 Models" (Physical Intelligence, 2026).
 
 This module (``RLT``) is the reference track that follows the reference
-construction line-by-line. It sits alongside the sibling ``RLActionToken``
+construction line-by-line. It sits alongside the sibling ``RLT_a``
 module, which is the pragmatic track already shipped in production; the
 ``README.md`` in this directory explains the differences between the two.
 """

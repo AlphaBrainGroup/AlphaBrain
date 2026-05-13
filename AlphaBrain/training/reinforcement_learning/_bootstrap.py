@@ -1,4 +1,4 @@
-"""Common environment / logging bootstrap for RLActionToken training & eval entries."""
+"""Common environment / logging bootstrap for RLT_a training & eval entries."""
 import logging
 import os
 from pathlib import Path
@@ -27,7 +27,7 @@ def _load_env_from_repo_root() -> None:
 def setup() -> None:
     """Idempotent bootstrap: env vars + logging.
 
-    Call once at the top of any RLActionToken entry script (before importing torch/wandb).
+    Call once at the top of any RLT_a entry script (before importing torch/wandb).
     """
     _load_env_from_repo_root()
     os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")

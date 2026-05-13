@@ -1,6 +1,6 @@
 #!/bin/bash
 # RLT Phase-2 TD3 on libero_goal task 0 (single task).
-# Reuses the RLActionToken TD3 pipeline, swaps the encoder family to
+# Reuses the RLT_a TD3 pipeline, swaps the encoder family to
 # RLT via --encoder_mode rlt. Async BatchInferenceServer path
 # (no --use_steplock yet on the RLT track).
 set -euo pipefail
