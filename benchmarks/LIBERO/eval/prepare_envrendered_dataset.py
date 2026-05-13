@@ -16,14 +16,14 @@ Output dataset structure (mostly symlinks, only re-rendered MP4 files are new):
 Two phases (libero env lacks pyarrow):
 
     # Phase A (vla env): per task-X episode, dump (actions, state0) → npz
-    ${ALPHABRAIN_PYTHON} benchmarks/LIBERO/eval/prepare_envrendered_dataset_zhanghe.py \
+    ${ALPHABRAIN_PYTHON} benchmarks/LIBERO/eval/prepare_envrendered_dataset.py \
         --phase dump_actions \
         --lerobot_dataset_path /share/zhanghe/Datasets/libero_goal_no_noops_1.0.0_lerobot \
         --task_whitelist "open the middle drawer of the cabinet" \
         --output_npz /tmp/envrender_actions_taskdrawer.npz
 
     # Phase B (libero env): replay env per episode, write new MP4 files
-    ${LIBERO_PYTHON} benchmarks/LIBERO/eval/prepare_envrendered_dataset_zhanghe.py \
+    ${LIBERO_PYTHON} benchmarks/LIBERO/eval/prepare_envrendered_dataset.py \
         --phase render \
         --actions_npz /tmp/envrender_actions_taskdrawer.npz \
         --task_suite_name libero_goal --task_id 0 \

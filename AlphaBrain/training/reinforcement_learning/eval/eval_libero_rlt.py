@@ -140,7 +140,7 @@ def _eval_one_task_rlt(
                     prop_state = torch.tensor(
                         np.array(obs["state"], dtype=np.float32)
                     ).unsqueeze(0).to(device)
-                    from AlphaBrain.training.reinforcement_learning.algos.RLT.pi05_inference_zhanghe import (
+                    from AlphaBrain.training.reinforcement_learning.algos.RLT.pi05_inference import (
                         run_rlt_inference,
                     )
                     rl_token, vla_actions = run_rlt_inference(
@@ -198,7 +198,7 @@ def main():
     for p in frozen_vla.parameters():
         p.requires_grad_(False)
 
-    from AlphaBrain.training.reinforcement_learning.algos.RLT.pi05_inference_zhanghe import (
+    from AlphaBrain.training.reinforcement_learning.algos.RLT.pi05_inference import (
         is_pi05, resolve_vla_metadata,
     )
     hidden_dim, action_norm_stats, chunk_len, action_dim = resolve_vla_metadata(frozen_vla)

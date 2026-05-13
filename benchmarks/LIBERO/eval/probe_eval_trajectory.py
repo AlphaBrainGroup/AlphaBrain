@@ -7,7 +7,7 @@ Output JSONL per step:
     {"step": t, "env_state": [8], "gt_action": [7], "pred_action_dataset": [7]}
 
 Run (libero env, server up):
-    ${LIBERO_PYTHON} benchmarks/LIBERO/eval/probe_eval_trajectory_zhanghe.py \
+    ${LIBERO_PYTHON} benchmarks/LIBERO/eval/probe_eval_trajectory.py \
         --lerobot_dataset_path /share/zhanghe/Datasets/libero_goal_no_noops_1.0.0_lerobot \
         --episode_index 20 \
         --task_description "open the middle drawer of the cabinet" \

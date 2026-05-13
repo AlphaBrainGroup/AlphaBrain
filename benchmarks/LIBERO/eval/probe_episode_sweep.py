@@ -8,7 +8,7 @@ Output JSONL format, one line per frame:
 Run from repo root, vla env (no proxy):
     unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY all_proxy
     export NO_PROXY=127.0.0.1,localhost
-    python benchmarks/LIBERO/eval/probe_episode_sweep_zhanghe.py \
+    python benchmarks/LIBERO/eval/probe_episode_sweep.py \
         --lerobot_dataset_path /share/zhanghe/Datasets/libero_goal_no_noops_1.0.0_lerobot \
         --episode_index 0 \
         --task_description "put the bowl on the plate" \

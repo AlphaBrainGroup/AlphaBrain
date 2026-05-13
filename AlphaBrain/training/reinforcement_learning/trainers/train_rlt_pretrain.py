@@ -142,7 +142,7 @@ def _forward_recon_loss(
     """
     # Framework dispatch: Qwen path keeps the original behavior; Pi05/PaliGemma
     # routes through the local adapter (no in-stream action tokens, prefix-only
-    # representation). See vla_features_pi05_zhanghe.py for caveats.
+    # representation). See vla_features_pi05.py for caveats.
     if hasattr(vla, "qwen_vl_interface"):
         last_hidden, attention_mask, _action_mask = get_vla_hidden_states(
             vla,
@@ -152,7 +152,7 @@ def _forward_recon_loss(
             drop_action_tokens=drop_action_tokens,
         )
     else:
-        from AlphaBrain.training.reinforcement_learning.algos.RLT.vla_features_pi05_zhanghe import (
+        from AlphaBrain.training.reinforcement_learning.algos.RLT.vla_features_pi05 import (
             get_vla_hidden_states_pi05,
         )
         last_hidden, attention_mask, _action_mask = get_vla_hidden_states_pi05(

@@ -5,7 +5,7 @@ Each jsonl row: {step, gt_action[7], pred_action_dataset[7], ...}
 GT is read from the first jsonl (all jsonls should share the same gt).
 
 Usage:
-    python benchmarks/LIBERO/eval/plot_action_curves_zhanghe.py \
+    python benchmarks/LIBERO/eval/plot_action_curves.py \
         --jsonl /tmp/sweep_v3_step25k_ep0.jsonl:v3_step25k \
         --jsonl /tmp/sweep_1traj_step30k_ep0.jsonl:1traj_step30k \
         --output_png /tmp/action_curves_ep0.png

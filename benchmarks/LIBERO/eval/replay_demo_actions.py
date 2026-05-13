@@ -10,14 +10,14 @@ init_state, wrong gripper convention, delta-action scaling, etc.).
 Two-phase because libero env lacks pyarrow:
 
     # Phase A (vla env) — read episode parquet, dump actions as npy
-    ${ALPHABRAIN_PYTHON} benchmarks/LIBERO/eval/replay_demo_actions_zhanghe.py \
+    ${ALPHABRAIN_PYTHON} benchmarks/LIBERO/eval/replay_demo_actions.py \
         --phase dump \
         --lerobot_dataset_path /share/zhanghe/Datasets/libero_goal_no_noops_1.0.0_lerobot \
         --episode_index 20 \
         --output_npz /tmp/replay_ep20_actions.npz
 
     # Phase B (libero env) — reset env to init_idx, step through actions
-    ${LIBERO_PYTHON} benchmarks/LIBERO/eval/replay_demo_actions_zhanghe.py \
+    ${LIBERO_PYTHON} benchmarks/LIBERO/eval/replay_demo_actions.py \
         --phase replay \
         --actions_npz /tmp/replay_ep20_actions.npz \
         --task_suite_name libero_goal \

@@ -7,7 +7,7 @@ Use to test if action chunking (vs single-step closed-loop) is the
 bottleneck — probe-style inference inside the standard eval framework.
 
 Run (libero env, server up):
-    ${LIBERO_PYTHON} benchmarks/LIBERO/eval/eval_libero_singlestep_zhanghe.py \
+    ${LIBERO_PYTHON} benchmarks/LIBERO/eval/eval_libero_singlestep.py \
         --args.pretrained-path <ckpt> \
         --args.host 127.0.0.1 --args.port 5795 \
         --args.task-suite-name libero_goal \

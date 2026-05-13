@@ -7,7 +7,7 @@ vision) or systematically different embeddings (vision-encoder OOD).
 Loads the model directly (no server). Run on a free GPU.
 
 Usage (vla env):
-    CUDA_VISIBLE_DEVICES=5 python benchmarks/LIBERO/eval/probe_vision_embedding_zhanghe.py \
+    CUDA_VISIBLE_DEVICES=5 python benchmarks/LIBERO/eval/probe_vision_embedding.py \
         --ckpt ./results/training/Pi05-goal-task0/checkpoints/steps_32500 \
         --lerobot_dataset_path /share/zhanghe/Datasets/libero_goal_no_noops_1.0.0_lerobot \
         --episode_index 20 \

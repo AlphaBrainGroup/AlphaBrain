@@ -105,7 +105,7 @@ def _eval_deterministic_local_rlt(
                         np.array(obs["state"], dtype=np.float32)
                     ).unsqueeze(0).to(device)
 
-                    from AlphaBrain.training.reinforcement_learning.algos.RLT.pi05_inference_zhanghe import (
+                    from AlphaBrain.training.reinforcement_learning.algos.RLT.pi05_inference import (
                         run_rlt_inference,
                     )
                     rl_token, vla_actions = run_rlt_inference(

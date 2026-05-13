@@ -46,7 +46,7 @@ def _run_vla_and_encode(
     no in-stream action tokens.
     """
     if encoder_mode == "rlt":
-        from AlphaBrain.training.reinforcement_learning.algos.RLT.pi05_inference_zhanghe import (
+        from AlphaBrain.training.reinforcement_learning.algos.RLT.pi05_inference import (
             run_rlt_inference,
         )
         rl_tokens, vla_actions = run_rlt_inference(

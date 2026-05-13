@@ -4,14 +4,14 @@
 Two-phase because libero env lacks pyarrow and vla env lacks libero:
 
     # Phase A (vla env) — read parquet, dump {task: first-frame state}
-    ${ALPHABRAIN_PYTHON} benchmarks/LIBERO/eval/build_train_init_map_zhanghe.py \
+    ${ALPHABRAIN_PYTHON} benchmarks/LIBERO/eval/build_train_init_map.py \
         --phase cache \
         --lerobot_dataset_path /share/zhanghe/Datasets/libero_goal_no_noops_1.0.0_lerobot \
         --num_traj_per_task 1 \
         --demo_states_cache /tmp/check2_demo_states.json
 
     # Phase B (libero env) — env-match against LIBERO init_states, write final map
-    ${LIBERO_PYTHON} benchmarks/LIBERO/eval/build_train_init_map_zhanghe.py \
+    ${LIBERO_PYTHON} benchmarks/LIBERO/eval/build_train_init_map.py \
         --phase match \
         --demo_states_cache /tmp/check2_demo_states.json \
         --task_suite_name libero_goal \

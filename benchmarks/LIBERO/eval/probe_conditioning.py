@@ -12,7 +12,7 @@ If A1 ≈ B1 (same prompt, different image) → model ignores image
 If all four are essentially identical → model collapsed to a constant.
 
 Run from repo root, vla env:
-    python benchmarks/LIBERO/eval/probe_conditioning_zhanghe.py \
+    python benchmarks/LIBERO/eval/probe_conditioning.py \
         --host 127.0.0.1 --port 5795
 """
 import argparse

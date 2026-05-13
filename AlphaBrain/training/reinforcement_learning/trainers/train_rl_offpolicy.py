@@ -25,7 +25,7 @@ from accelerate.utils import set_seed
 from AlphaBrain.model.framework.base_framework import BaseFramework
 from AlphaBrain.training.reinforcement_learning.common.ckpt_io import save_rlt_checkpoint
 from AlphaBrain.training.reinforcement_learning.eval.eval_helpers import _eval_deterministic_local
-from AlphaBrain.training.reinforcement_learning.eval.eval_helpers_rlt_zhanghe import (
+from AlphaBrain.training.reinforcement_learning.eval.eval_helpers_rlt import (
     _eval_deterministic_local_rlt,
 )
 from AlphaBrain.training.reinforcement_learning.envs.libero_env import MAX_STEPS, get_suite_info
@@ -101,8 +101,8 @@ def run_rl_offpolicy(args):
         vla_copies[train_gpu_id] = vla
 
     # Backbone-agnostic metadata (Qwen vs Pi05): hidden_dim, action_norm_stats,
-    # chunk_len, action_dim. See pi05_inference_zhanghe.resolve_vla_metadata.
-    from AlphaBrain.training.reinforcement_learning.algos.RLT.pi05_inference_zhanghe import (
+    # chunk_len, action_dim. See pi05_inference.resolve_vla_metadata.
+    from AlphaBrain.training.reinforcement_learning.algos.RLT.pi05_inference import (
         is_pi05, resolve_vla_metadata,
     )
     ref_vla = vla_copies[rollout_gpu_ids[0]]

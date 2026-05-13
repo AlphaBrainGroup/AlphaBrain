@@ -2,14 +2,14 @@
 """Check 2 (train-init): eval only on the LIBERO init_states that match each
 training demo's first-frame state.
 
-Pairs with ``build_train_init_map_zhanghe.py`` which produces the
+Pairs with ``build_train_init_map.py`` which produces the
 ``{task_id: init_idx}`` JSON this script consumes. Runs exactly 1 trial
 per task on the matched init_state, so SR near 100% means "model
 memorized the training demo" and SR near 0 means the training pipeline
 didn't produce actions that even reproduce the training trajectory.
 
 Launch (libero python env, server already up):
-    python benchmarks/LIBERO/eval/eval_libero_train_init_zhanghe.py \
+    python benchmarks/LIBERO/eval/eval_libero_train_init.py \
         --args.pretrained-path ./results/training/Pi05-1traj-libero_goal/checkpoints/steps_30000 \
         --args.host 127.0.0.1 --args.port 5795 \
         --args.task-suite-name libero_goal \

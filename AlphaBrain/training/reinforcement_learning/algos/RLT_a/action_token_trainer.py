@@ -164,7 +164,7 @@ class BatchInferenceServer:
                     # Pi05 (PaliGemmaPi05) takes a different inference path
                     # entirely (no in-stream action tokens; action chunk comes
                     # from the flow-matching head). Dispatch on framework type.
-                    from AlphaBrain.training.reinforcement_learning.algos.RLT.pi05_inference_zhanghe import (
+                    from AlphaBrain.training.reinforcement_learning.algos.RLT.pi05_inference import (
                         is_pi05, get_pi05_rl_state_and_action,
                     )
                     if is_pi05(self.frozen_vla):

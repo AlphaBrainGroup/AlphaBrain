@@ -90,11 +90,11 @@ which **is** a deviation — noted in the help text.
   - `Qwenvl_OFT` (Qwen2.5-VL-3B + MLP action head) — original target.
   - `PaliGemmaPi05` (SigLIP + Gemma 2B + flow-matching action expert) —
     routes through the Pi05 inference adapter
-    (`pi05_inference_zhanghe.py`) which fuses prefix Gemma forward +
+    (`pi05_inference.py`) which fuses prefix Gemma forward +
     diffusion in one call per rollout step.
   Both go through the same `RLTokenEncoderDecoder`; only the
   `get_vla_hidden_states` dispatch differs (see `vla_features.py` vs
-  `vla_features_pi05_zhanghe.py`). The encoder-decoder construction is
+  `vla_features_pi05.py`). The encoder-decoder construction is
   base-VLA-agnostic — it only sees `z_{1:M}` — but the meaning of
   "task-relevant information" inside `z_{1:M}` is whatever the pretrained
   backbone you pass in happens to encode.
