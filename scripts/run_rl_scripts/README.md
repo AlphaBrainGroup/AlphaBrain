@@ -1,11 +1,15 @@
 # `run_rl_scripts/` — VLA Online RL launchers (LIBERO)
 
-End-to-end pipeline:
+End-to-end RL pipeline (assumes a pretrained VLA checkpoint is already on disk):
 
 ```
-[VLA finetune]  →  [Phase-1 encoder pretrain]  →  [Phase-2 TD3 RL]  →  [Eval]
-   pi05 only       run_rlt_pretrain.sh           run_rlt_rl.sh        run_eval_*.sh
+[Phase-1 encoder pretrain]  →  [Phase-2 TD3 RL]  →  [Eval]
+   run_rlt_pretrain.sh         run_rlt_rl.sh         run_eval_rlt{,_a}.sh
 ```
+
+VLA finetune itself isn't part of this directory's flow — it's a one-time
+upstream step. See `example_scripts/run_pi05_finetune.sh` for the Pi05
+recipe, or `configs/finetune_config.yaml` for Qwen.
 
 ---
 
@@ -69,7 +73,6 @@ adapter is on the roadmap.
 ```
 .
 ├── README.md
-├── run_pi05_finetune.sh       # VLA finetune (Pi05; pick variant via env)
 ├── run_rlt_pretrain.sh        # Phase-1: RLT encoder pretrain
 ├── run_rlt_rl.sh              # Phase-2: TD3 RL on the RLT track (Qwen or Pi05)
 │
@@ -77,7 +80,10 @@ adapter is on the roadmap.
 ├── run_eval_rlt_a.sh          # offline eval, RLT_a policy (Qwen only)
 │
 ├── example_results/           # reference plots / summaries
-└── example_scripts/           # legacy launchers + pi05_eval.yaml (VLA-only eval configs)
+└── example_scripts/
+    ├── run_pi05_finetune.sh   # upstream VLA finetune (not in the RL flow)
+    ├── pi05_eval.yaml         # VLA-only (no RL) eval configs
+    └── ...                    # legacy / one-off launchers
 ```
 
 (End-to-end `RLT_a` training launcher isn't in this dir; see
@@ -85,65 +91,102 @@ adapter is on the roadmap.
 
 ---
 
-## Quick start
+## Prerequisites
 
-### Prerequisites
+- A pretrained VLA checkpoint on disk. The releases assume either
+  `QwenOFT-5traj-libero_goal/final_model` (Qwen) or
+  `Pi05-goal-{1traj,5traj}-openpi/checkpoints/steps_30000` (Pi05). If you
+  don't have one yet, see `example_scripts/run_pi05_finetune.sh` (Pi05)
+  or `configs/finetune_config.yaml` (Qwen).
+- LIBERO installed in a separate conda env. Set `LIBERO_PYTHON` and
+  `LIBERO_HOME` (in `.env` is fine) so launchers can spawn env workers.
+- **Pi05 only**: local PaliGemma tokenizer dir at
+  `$PALIGEMMA_TOKENIZER_PATH` (default `/datasets/peligemma`). Without
+  this the first rollout dies with `ModuleNotFoundError: sentencepiece`.
 
-- LIBERO installed in a separate conda env. Set `LIBERO_PYTHON` and `LIBERO_HOME` (or put them in `.env`) so launchers can spawn env worker subprocesses.
-- For Pi05: local PaliGemma tokenizer dir at `$PALIGEMMA_TOKENIZER_PATH` (default `/datasets/peligemma`). Otherwise tokenizer init falls through to HF hub fetch and then to `sentencepiece` (often absent in containers).
-- Disk: pretrain + RL output lands under `results/rlt_training/<run_name>_<timestamp>/`.
+---
 
-### 1 — Finetune the VLA (Pi05 only; Qwen ckpts assumed pre-existing)
+## Walkthrough: train + eval on `libero_goal` task 0 with Pi05-5traj
+
+Concrete commands for one full run, end-to-end. Assumes the VLA is
+already at `results/training/Pi05-goal-5traj-openpi/checkpoints/steps_30000`.
+
+### Step 1 — Phase-1: pretrain the RLT encoder
+
+Compress the VLA's hidden states into a 1-token information bottleneck.
+Frozen VLA, trainable encoder/decoder, MSE reconstruction loss.
 
 ```bash
-VARIANT=1traj bash scripts/run_rl_scripts/run_pi05_finetune.sh   # 1 traj/task
-VARIANT=5traj bash scripts/run_rl_scripts/run_pi05_finetune.sh   # 5 traj/task
-VARIANT=task0 bash scripts/run_rl_scripts/run_pi05_finetune.sh   # task 0 only
+CKPT_PATH=results/training/Pi05-goal-5traj-openpi/checkpoints/steps_30000 \
+    bash scripts/run_rl_scripts/run_rlt_pretrain.sh 0
 ```
 
-Each maps to a mode block in `configs/finetune_config.yaml`. Output: `results/training/Pi05-goal-<VARIANT>-openpi/checkpoints/steps_<N>/`.
+Output: `results/rlt_training/pi05_5traj_openpi_strict_<MMDD_HHMM>/pretrain/checkpoints/pretrain_best/encoder.pt`
 
-### 2 — Phase-1: pretrain the RLT encoder
+### Step 2 — Phase-2: TD3 RL with the frozen encoder
+
+Frozen VLA + frozen encoder (from Step 1) + trainable actor & critic.
+TD updates fed by transitions from parallel LIBERO env rollouts. The
+launcher auto-discovers the latest `encoder.pt` produced by Step 1.
 
 ```bash
-bash scripts/run_rl_scripts/run_rlt_pretrain.sh [GPU_ID]
+BACKBONE=pi05 VARIANT=5traj TASK_ID=0 \
+    bash scripts/run_rl_scripts/run_rlt_rl.sh 0
 ```
 
-Override `CKPT_PATH` / `OUTPUT_DIR` via env if you want a non-default VLA. Output: `results/rlt_training/<tag>/pretrain/checkpoints/pretrain_best/encoder.pt`.
+Output: `results/rlt_training/rlt_rl_t0_release_pi05_5traj_<MMDD_HHMM>/rl_offpolicy/`
+containing `train.log`, `checkpoints/rl_offpolicy_iter_<N>/`, and online
+`eval_iter_<N>_rlt/summary.json`.
 
-### 3 — Phase-2: RL fine-tune (RLT track)
+The default training schedule runs `--max_iter 300` with a ckpt every
+25 iters (12 ckpts total) and an async eval every 10 iters.
 
-```bash
-# Qwen track (default)
-bash scripts/run_rl_scripts/run_rlt_rl.sh [GPU_ID]
+### Step 3 — Offline eval across all saved ckpts
 
-# Pi05 track
-BACKBONE=pi05 VARIANT=1traj TASK_ID=0 bash scripts/run_rl_scripts/run_rlt_rl.sh 0
-BACKBONE=pi05 VARIANT=5traj TASK_ID=3 bash scripts/run_rl_scripts/run_rlt_rl.sh 0
-```
-
-`ENCODER_PATH` is auto-discovered (latest matching pretrain dir). Override `CKPT_PATH` / `ENCODER_PATH` via env if needed.
-
-For the `RLT_a` track, see `AlphaBrain/training/reinforcement_learning/algos/RLT_a/README.md`.
-
-### 4 — Eval
+The in-training eval is fine for monitoring but uses only 20 episodes.
+For paper-grade numbers, re-eval each ckpt with 50 episodes:
 
 ```bash
-# VLA-only (no RL): policy server + LIBERO client. The yaml has one mode
-# block per finetune variant; edit `checkpoint:` to point at the desired
-# steps_X dir before running.
-bash scripts/run_base_vla/eval.sh pi05_goal_5traj_eval \
-    scripts/run_rl_scripts/example_scripts/pi05_eval.yaml
-
-# RLT offline eval: defaults to all iter ckpts under RUN_DIR, parallel
-# across GPUS. Pass ITER=00300 to eval one ckpt only.
-RUN_DIR=results/rlt_training/<run>/rl_offpolicy \
+RUN_DIR=results/rlt_training/rlt_rl_t0_release_pi05_5traj_<MMDD_HHMM>/rl_offpolicy \
 VLA_CKPT=results/training/Pi05-goal-5traj-openpi/checkpoints/steps_30000 \
 GPUS="0 1 2" TASK_IDS=0 N_EPS=50 \
     bash scripts/run_rl_scripts/run_eval_rlt.sh
+```
 
-# RLT_a offline eval (Qwen only): 10 tasks split across 3 GPUs
+This shards the 12 ckpts across the 3 GPUs (~50 min wall time). Output:
+one `eval_iter_<N>_rlt/summary.json` per ckpt + an aggregate table
+printed at the end + saved at `<RUN_DIR>/eval_all_iters_rlt/all_iters_summary.json`.
+
+To eval a single ckpt only:
+```bash
+ITER=00300 RUN_DIR=... VLA_CKPT=... GPUS=0 \
+    bash scripts/run_rl_scripts/run_eval_rlt.sh
+```
+
+---
+
+## Switching backbones / tracks
+
+```bash
+# Same flow, but Qwen backbone (default for run_rlt_rl.sh)
+bash scripts/run_rl_scripts/run_rlt_pretrain.sh 0
+bash scripts/run_rl_scripts/run_rlt_rl.sh 0
+# RLT eval works the same
+
+# Same flow, but Pi05 1traj instead of 5traj
+BACKBONE=pi05 VARIANT=1traj TASK_ID=0 bash scripts/run_rl_scripts/run_rlt_rl.sh 0
+
+# RLT_a track (action-token encoder) — Qwen only currently
+# Training entry point isn't in this dir; see algos/RLT_a/README.md.
 bash scripts/run_rl_scripts/run_eval_rlt_a.sh <RUN_DIR>
+```
+
+For VLA-only eval (baseline SR before any RL), point the standard
+LIBERO server at the finetune ckpt:
+
+```bash
+bash scripts/run_base_vla/eval.sh pi05_goal_5traj_eval \
+    scripts/run_rl_scripts/example_scripts/pi05_eval.yaml
 ```
 
 ---
