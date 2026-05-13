@@ -1,0 +1,48 @@
+# Pi05 (PaliGemmaPi05) eval configs — one mode per finetune variant.
+# Consumed by scripts/run_base_vla/eval.sh; each mode launches its own
+# policy server + LIBERO client.
+#
+# Launch examples:
+#   bash scripts/run_base_vla/eval.sh pi05_goal_1traj_eval scripts/run_rl_scripts/pi05_eval.yaml
+#   bash scripts/run_base_vla/eval.sh pi05_goal_5traj_eval scripts/run_rl_scripts/pi05_eval.yaml
+#   bash scripts/run_base_vla/eval.sh pi05_goal_task0_eval scripts/run_rl_scripts/pi05_eval.yaml
+#
+# Or via the latest-ckpt wrapper (rewrites `checkpoint:` to the newest
+# steps_X dir in the source training run):
+#   RUN_DIR=results/training/Pi05-goal-5traj-openpi \
+#   MODE=pi05_goal_5traj_eval \
+#       bash scripts/run_rl_scripts/run_eval_pi05_latest_zhanghe.sh
+
+modes:
+  # libero_goal × 1 traj per task = 10 demos (multi-task, raw openpi init).
+  pi05_goal_1traj_eval:
+    type: "eval"
+    checkpoint: "./results/training/Pi05-goal-1traj-openpi/checkpoints/steps_30000"
+    task_suite: "libero_goal"
+    num_trials: 50
+    host: "127.0.0.1"
+    port: 5795
+    gpu_id: 2
+    use_bf16: true
+
+  # libero_goal × 5 traj per task = 50 demos (multi-task, raw openpi init).
+  pi05_goal_5traj_eval:
+    type: "eval"
+    checkpoint: "./results/training/Pi05-goal-5traj-openpi/checkpoints/steps_30000"
+    task_suite: "libero_goal"
+    num_trials: 50
+    host: "127.0.0.1"
+    port: 5796
+    gpu_id: 3
+    use_bf16: true
+
+  # Sanity-check: single libero_goal task (task 0) with all ~43 demos.
+  pi05_goal_task0_eval:
+    type: "eval"
+    checkpoint: "./results/training/Pi05-goal-task0-openpi/checkpoints/steps_6000"
+    task_suite: "libero_goal"
+    num_trials: 10
+    host: "127.0.0.1"
+    port: 5795
+    gpu_id: 0
+    use_bf16: true

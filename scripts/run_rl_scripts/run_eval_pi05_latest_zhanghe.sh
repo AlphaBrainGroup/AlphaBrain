@@ -4,7 +4,7 @@
 # Usage:
 #   bash scripts/run_rl_scripts/run_eval_pi05_latest_zhanghe.sh
 #       → defaults to RUN_DIR=results/training/Pi05-goal-task0,
-#         YAML=scripts/run_rl_scripts/pi05_goal_task0_eval.yaml,
+#         YAML=scripts/run_rl_scripts/pi05_eval.yaml,
 #         MODE=pi05_goal_task0_eval
 #
 #   RUN_DIR=results/training/Pi05-something \
@@ -17,7 +17,7 @@ set -euo pipefail
 cd "${ALPHABRAIN_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 
 RUN_DIR="${RUN_DIR:-results/training/Pi05-goal-task0}"
-YAML="${YAML:-scripts/run_rl_scripts/pi05_goal_task0_eval.yaml}"
+YAML="${YAML:-scripts/run_rl_scripts/pi05_eval.yaml}"
 MODE="${MODE:-pi05_goal_task0_eval}"
 
 # Find latest steps_X dir by numeric suffix
