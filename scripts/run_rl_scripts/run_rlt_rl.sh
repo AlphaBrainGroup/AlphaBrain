@@ -45,10 +45,19 @@ BACKBONE=${BACKBONE:-qwen}
 TASK_ID=${TASK_ID:-0}
 
 # ── Backbone-specific defaults (ckpt + encoder dir prefix) ──
+# Encoder.pt format depends on TRACK (RLT's encoder-decoder cross-attention
+# layout vs RLT_a's CLS+bottleneck layout), so DEFAULT_ENCODER is per-track.
 case "${BACKBONE}" in
     qwen)
         DEFAULT_CKPT="results/training/QwenOFT-5traj-libero_goal/final_model"
-        DEFAULT_ENCODER="results/rlt_training/5traj_libero_goal_0425_1322/pretrain/checkpoints/pretrain_best/encoder.pt"
+        if [ "${TRACK}" = "rlt_a" ]; then
+            # RLT_a (action_token) format encoder; latest rlt_a_* pretrain dir.
+            _PRETRAIN_DIR=$(ls -td results/rlt_training/{rlt_a,smoke_rlt_a,5traj_alltasks}_*/pretrain 2>/dev/null | head -1 || true)
+            DEFAULT_ENCODER="${_PRETRAIN_DIR:+${_PRETRAIN_DIR}/checkpoints/pretrain_best/encoder.pt}"
+        else
+            # RLT (paper-faithful) format encoder.
+            DEFAULT_ENCODER="results/rlt_training/5traj_libero_goal_0425_1322/pretrain/checkpoints/pretrain_best/encoder.pt"
+        fi
         BACKBONE_TAG="qwen"
         ;;
     pi05)
