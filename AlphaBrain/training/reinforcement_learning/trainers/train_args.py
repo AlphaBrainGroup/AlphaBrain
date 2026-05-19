@@ -8,7 +8,7 @@ def parse_args():
         "--phase",
         type=str,
         required=True,
-        choices=["pretrain", "pretrain_rlt", "rl", "rl_offpolicy", "grpo"],
+        choices=["pretrain", "pretrain_rlt", "rl", "rl_offpolicy", "grpo", "vla_ppo"],
     )
     p.add_argument("--ckpt_path", type=str, required=True, help="SFT checkpoint path")
     p.add_argument("--encoder_path", type=str, default=None,
@@ -134,6 +134,12 @@ def parse_args():
     p.add_argument("--ref_update_interval", type=int, default=0,
                    help="Refresh reference actor every N iters (0 = never; "
                         "keeps initial actor as fixed reference)")
+
+    # Vanilla VLA+PPO (phase vla_ppo)
+    # Note: --lr_vla is shared with the off-policy finetune path (defined below).
+    p.add_argument("--micro_batch", type=int, default=4,
+                   help="VLA re-forward mini-batch size during PPO update "
+                        "(memory-bound; lower if OOM)")
 
     # Off-policy RL (Phase 2 offpolicy)
     p.add_argument("--buffer_capacity", type=int, default=100000,
