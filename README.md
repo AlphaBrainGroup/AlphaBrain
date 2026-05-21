@@ -7,7 +7,7 @@
 [![Status](https://img.shields.io/badge/Status-Milestone%202%20MVP-2563eb.svg)](#current-status)
 
 <p align="center">
-  <img src="assets/nvex-pearl-illustration.png" width="100%" alt="Nvex PEARL self-improving Physical AI loop"/>
+  <img src="assets/NVEX-SIA-for-PhysicalAI.png" width="100%" alt="Nvex PEARL self-improving Physical AI loop"/>
 </p>
 
 **Nvex turns policy failure into a repeatable improvement loop.**

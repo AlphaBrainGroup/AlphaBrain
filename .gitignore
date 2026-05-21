@@ -2,6 +2,8 @@ debug/
 ckpts/
 third_party/
 .env
+demo-video/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
