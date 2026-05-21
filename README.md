@@ -90,16 +90,30 @@ The current Nvex demo is a 7-page interactive workflow:
 
 ## Current Status
 
-Nvex Milestone 2 is implemented in this repository:
+**Nvex Milestone 3 is fully implemented.** The platform runs the complete failure-to-improvement loop autonomously.
 
+### Milestone 2 ✅ — Executable MVP
 - `nvex_server/` provides the FastAPI backend for demo state, artifact import, patch-plan generation, job dispatch, status polling, and improvement reports.
-- `demo/` provides the React + Vite interactive product demo.
-- `nvex_server/examples/` contains seeded before/after LIBERO Kitchen eval artifacts for the 62% to 74% improvement case.
+- `demo/` provides the React + Vite interactive 7-page product demo.
+- `nvex_server/examples/` contains seeded before/after LIBERO Kitchen eval artifacts for the 62% → 74% improvement case.
 - The backend can ingest structured eval artifacts and produce Nvex-native schemas for failure maps, patch plans, iteration jobs, reports, and reusable memory assets.
 
-Milestone 3 focuses on the autonomous self-improvement agent: Nvex should be able to run the full loop without a human manually approving each intermediate step.
+### Milestone 3 ✅ — Self-Improving Agent
+- `SelfImprovementAgent` orchestrates the full autonomous loop: eval → diagnose → plan → dispatch → verify → memory.
+- Two modes: **simulate=True** (demo with precomputed 4-loop replay) and **simulate=False** (real AlphaBrain dispatch).
+- Multi-iteration support with regression detection and rollback semantics (e.g., 62% → 74% → 81% → 79% rollback → 85%).
+- `LLMNarrator` generates natural-language explanations for each step (powered by OpenAI gpt-4o-mini when available).
+- React demo includes "Auto-Improve" button, live agent reasoning panel, and multi-iteration convergence chart.
+
+### Milestone 4 — Customer-Grade Platform (In Progress)
+- Streaming agent timeline with variable step durations
+- Multi-project isolation and persistent platform memory
+- Customer onboarding API (BYO checkpoint + eval artifact)
+- Role-based views (operator vs executive)
 
 ## Run The Demo
+
+### Quick Start
 
 Start the backend:
 
@@ -107,7 +121,7 @@ Start the backend:
 ./.venv/bin/python -m uvicorn nvex_server.app:app --reload --port 8000
 ```
 
-Start the React app:
+Start the React app in another terminal:
 
 ```bash
 cd demo
@@ -123,11 +137,32 @@ http://127.0.0.1:5173
 
 The Vite dev server proxies `/api` requests to `http://127.0.0.1:8000`, so the React app consumes the local Nvex backend directly.
 
-For a static walkthrough, open the standalone HTML demo:
+### Standalone Demo
+
+For a static walkthrough without running a backend:
 
 ```bash
 open demo/nvex-demo.html
 ```
+
+### Demo Features
+
+- **Seeded Improvement Scenario**: LIBERO Kitchen checkpoint 62% → 74% (then 81% → 85% with recovery after regression)
+- **Auto-Improve Mode**: Click "Auto-Improve" to watch the agent run the full loop autonomously in demo mode
+- **Live Agent Reasoning**: See the agent's decisions at each step (why CL over SFT, why targeting occlusion data)
+- **Multi-Iteration Chart**: Visualize progression across loops, including rollback and recovery
+
+## Key Capabilities
+
+## Key Capabilities
+
+✅ **Autonomous Improvement Loop** — Run the full failure→diagnosis→plan→train→verify cycle without manual steps  
+✅ **Intelligent Patch Planning** — Map failure clusters to targeted training strategies (CL, SFT, VLM co-training)  
+✅ **Real AlphaBrain Integration** — Dispatch jobs to continual learning, fine-tuning, or RL training backends  
+✅ **LLM-Generated Reasoning** — Natural-language explanations for diagnosis, planning, and verification steps  
+✅ **Multi-Iteration Convergence** — Track non-monotonic improvement arcs with regression detection and rollback  
+✅ **Platform Memory** — Save recipes and patterns from each loop for reuse across projects  
+✅ **Interactive Dashboard** — 7-page investor-focused narrative with live agent streaming and reasoning panels  
 
 ## API Surface
 
@@ -137,39 +172,45 @@ The local backend exposes:
 | --- | --- |
 | `GET /health` | Health check |
 | `GET /api/demo/state` | Seeded full demo state |
+| `GET /api/demo/agent` | Pre-seeded autonomous agent run state |
 | `POST /api/eval/import` | Import a benchmark artifact as an eval run |
 | `POST /api/plan/generate` | Generate a patch plan from failures |
 | `POST /api/iteration/start` | Start an improvement iteration |
 | `GET /api/iteration/{id}/status` | Poll iteration status |
 | `GET /api/report/{iteration_id}` | Fetch the improvement report |
+| `POST /api/agent/run` | Launch a new autonomous improvement run |
+| `GET /api/agent/{id}/status` | Poll autonomous agent state |
+| `POST /api/agent/{id}/advance` | Advance agent by one step (for demo mode) |
 
 ## Repository Map
 
 ```text
 nvex_server/
-  app.py                    FastAPI routes
+  app.py                    FastAPI routes and InMemoryStore
+  agent.py                  SelfImprovementAgent orchestrator (demo + real modes)
   schemas.py                Nvex data contracts
   patch_plan_generator.py   Rule-based patch planner
   dispatcher.py             Iteration dispatch and status tracking
   exporters.py              Benchmark artifact import helpers
+  llm_narrator.py           LLM-powered reasoning narration (OpenAI fallback)
   examples/                 Seeded before/after eval artifacts
 
 demo/
-  src/                      React product demo
+  src/                      React product demo with 7 pages
   nvex-demo.html            Standalone static walkthrough
 
-SELF_IMPROVEMENT_AGENT.md   Autonomous-loop design
-IMPLEMENTATION_PLAN.md      Milestones and execution plan
+SELF_IMPROVEMENT_AGENT.md   Autonomous-loop design and semantics
+IMPLEMENTATION_PLAN.md      Detailed milestones, delivery, and roadmap
 assets/                     README and demo imagery
 ```
 
 ## Roadmap
 
-| Milestone | Focus |
-| --- | --- |
-| **M2: Executable MVP** | Completed local backend path, seeded improvement case, interactive demo |
-| **M3: Self-Improving Agent** | Autonomous loop runner, tool registry, stopping criteria, agent reasoning panel |
-| **M4: Customer-Grade Platform** | Multi-project support, persistent memory, data workbench, custom eval integrations |
+| Milestone | Status | Focus |
+| --- | --- | --- |
+| **M2: Executable MVP** | ✅ Complete | Real backend path, seeded LIBERO improvement case, interactive demo |
+| **M3: Self-Improving Agent** | ✅ Complete | Autonomous loop runner, LLM narration, stopping criteria, reasoning UI |
+| **M4: Customer-Grade Platform** | 🔄 In Progress | Streaming timeline, multi-project support, persistent memory, customer onboarding API |
 
 See [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) and [`SELF_IMPROVEMENT_AGENT.md`](SELF_IMPROVEMENT_AGENT.md) for the full plan.
 
