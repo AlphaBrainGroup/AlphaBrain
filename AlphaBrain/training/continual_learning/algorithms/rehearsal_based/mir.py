@@ -30,9 +30,8 @@ overhead is roughly 10 % vs ER.
 LoRA-only virtual step
 ----------------------
 Only LoRA parameters (``'lora' in name.lower()``) participate in the
-virtual step.  This matches EWC's filter and is essential on 3B-scale
-backbones — otherwise the Δ direction is swamped by frozen backbone
-noise.
+virtual step.  This is essential on 3B-scale backbones — otherwise the
+Δ direction is swamped by frozen backbone noise.
 
 Model access
 ------------

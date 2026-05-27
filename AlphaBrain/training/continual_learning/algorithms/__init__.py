@@ -1,11 +1,9 @@
 """Continual-learning algorithms.
 
-Algorithms are grouped by their mechanism into three sub-packages:
+Algorithms are grouped by their mechanism into sub-packages:
 
 - :mod:`.rehearsal_based`      — replay past-task samples
                                   (ER, MIR, planned DER / A-GEM)
-- :mod:`.regularization_based` — penalise movement away from important
-                                  parameters (EWC, planned SI / LwF)
 - :mod:`.dynamic_based`        — adapt the model architecture across tasks
                                   (planned DWE / Weight Merge / PackNet)
 
@@ -19,11 +17,9 @@ Public API
 ----------
 The concrete classes are re-exported at this package level for convenience::
 
-    from AlphaBrain.training.continual_learning.algorithms import EWC, MIR, ER
+    from AlphaBrain.training.continual_learning.algorithms import MIR, ER
 
-Fully-qualified paths also work, e.g.
-``algorithms.regularization_based.ewc.EWC`` or
-``algorithms.rehearsal_based.er.ER``.
+Fully-qualified paths also work, e.g. ``algorithms.rehearsal_based.er.ER``.
 """
 from typing import Optional
 
@@ -31,7 +27,6 @@ from AlphaBrain.training.continual_learning.algorithms.base import (
     CLAlgorithm,
     CLContext,
 )
-from AlphaBrain.training.continual_learning.algorithms.regularization_based import EWC
 from AlphaBrain.training.continual_learning.algorithms.rehearsal_based import ER, MIR
 
 
@@ -50,17 +45,17 @@ def build_cl_algorithm(cfg, seed: int = 42) -> Optional[CLAlgorithm]:
                replay_batch_ratio: 0.3
                balanced_sampling: false
 
-    2. Generic algorithm (EWC / RETAIN / DER / DWE / …)::
+    2. Generic algorithm (ER / MIR / …)::
 
            continual_learning:
              algorithm:
-               name: ewc
-               lambda: 1.0e4
-               gamma: 1.0
-               lora_only: true
-               fisher_num_batches: 50
-               fisher_clip: 1.0e4
-               grad_clip_per_sample: 100.0
+               name: mir
+               buffer_size_per_task: 500
+               replay_batch_ratio: 0.5
+               mir_refresh_interval: 50
+               mir_candidate_size: 16
+               mir_top_k: 8
+               mir_lora_only: true
 
     Returns ``None`` when neither section is configured — the trainer then
     runs a plain sequential baseline without CL interventions.
@@ -94,23 +89,6 @@ def build_cl_algorithm(cfg, seed: int = 42) -> Optional[CLAlgorithm]:
                 balanced_sampling=algo_cfg.get("balanced_sampling", False),
                 seed=seed,
             )
-        if key == "ewc":
-            # `lambda` is a Python keyword; accept either `lambda` or
-            # `ewc_lambda` (OmegaConf tolerates the former as a dict key).
-            ewc_lambda = algo_cfg.get("lambda", None)
-            if ewc_lambda is None:
-                ewc_lambda = algo_cfg.get("ewc_lambda", 1.0e4)
-            excl = algo_cfg.get("exclude_name_substrings", None)
-            return EWC(
-                ewc_lambda=ewc_lambda,
-                gamma=algo_cfg.get("gamma", 1.0),
-                lora_only=algo_cfg.get("lora_only", True),
-                fisher_num_batches=algo_cfg.get("fisher_num_batches", 50),
-                fisher_clip=algo_cfg.get("fisher_clip", 1.0e4),
-                grad_clip_per_sample=algo_cfg.get("grad_clip_per_sample", 100.0),
-                fisher_save_dir=algo_cfg.get("fisher_save_dir", None),
-                exclude_name_substrings=list(excl) if excl is not None else None,
-            )
         if key == "mir":
             return MIR(
                 buffer_size_per_task=algo_cfg.get("buffer_size_per_task", 500),
@@ -134,7 +112,6 @@ __all__ = [
     "CLAlgorithm",
     "CLContext",
     "ER",
-    "EWC",
     "MIR",
     "build_cl_algorithm",
 ]

@@ -52,8 +52,6 @@ AlphaBrain/training/continual_learning/algorithms/
 ├── rehearsal_based/             # replay methods
 │   ├── er.py                    #   class ER
 │   └── mir.py                   #   class MIR(ER)
-├── regularization_based/        # loss-penalty methods
-│   └── ewc.py                   #   class EWC
 └── dynamic_based/               # per-task architecture changes (planned)
 ```
 
@@ -430,7 +428,6 @@ AlphaBrain/training/continual_learning/train.py            (trainer)
         ├── algorithms/
         │   ├── base.py                  CLAlgorithm protocol + CLContext
         │   ├── rehearsal_based/         ER, MIR
-        │   ├── regularization_based/    EWC
         │   └── dynamic_based/           (planned: DWE / Weight Merge / PackNet)
         │
         ├── datasets/                    TaskFilteredDataset + task_sequences
@@ -448,10 +445,10 @@ hooks run in the inner loop; task-level hooks bracket each CL task:
 |:--------------------------------|:----------------------------------------------|:----------------------------------------------------|
 | `observe(batch, task_id)`       | Per step, before forward                      | Online bookkeeping (SI, streaming reservoir)        |
 | `modify_batch(batch, task_id)`  | Per step, before forward                      | ER / MIR inject replay samples                      |
-| `compute_penalty(model)`        | Per step, inside autocast block               | EWC / SI return λ · regularizer tensor              |
+| `compute_penalty(model)`        | Per step, inside autocast block               | Regularization-based methods return λ · penalty     |
 | `after_backward(model)`         | Per step, after `accelerator.backward()`      | MIR snapshots gradients (DeepSpeed-safe)            |
 | `on_task_start(ctx)`            | Before each task's inner loop begins          | DWE expands model; MIR installs grad hooks          |
-| `on_task_end(ctx)`              | After each task's inner loop finishes         | ER populates buffer; EWC computes Fisher            |
+| `on_task_end(ctx)`              | After each task's inner loop finishes         | ER populates buffer; RETAIN merges weights          |
 
 `ctx` is a `CLContext` dataclass carrying `task_id`, `model`,
 `task_dataset`, `task_dataloader`, and `accelerator` — the algorithm

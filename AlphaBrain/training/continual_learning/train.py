@@ -2,7 +2,7 @@
 Continual Learning Trainer for AlphaBrain.
 
 Trains a VLA model sequentially on a stream of tasks, delegating the CL
-strategy (Experience Replay / EWC / RETAIN / DWE / …) to a pluggable
+strategy (Experience Replay / DER / RETAIN / DWE / …) to a pluggable
 ``CLAlgorithm`` instance built by
 :func:`AlphaBrain.training.continual_learning.algorithms.build_cl_algorithm`.
 
@@ -148,7 +148,7 @@ class ContinualVLATrainer(TrainerUtils):
         from AlphaBrain.training.trainer_utils.peft import is_lora_enabled
         self.use_lora = is_lora_enabled(cfg)
 
-        # Continual-learning algorithm (ER / MIR / EWC / ...).
+        # Continual-learning algorithm (ER / MIR / ...).
         # None means "plain sequential baseline — no CL intervention".
         self.cl_algorithm = build_cl_algorithm(cfg, seed=cfg.get("seed", 42))
 
@@ -204,8 +204,8 @@ class ContinualVLATrainer(TrainerUtils):
                 f"skipping {start_task_idx} completed tasks"
             )
             # Rebuild CL algorithm state by replaying on_task_end for each
-            # completed task (ER re-populates its buffer, EWC re-computes
-            # Fisher from snapshots, RETAIN re-applies merges, etc.).
+            # completed task (ER re-populates its buffer, RETAIN re-applies
+            # merges, etc.).
             if self.cl_algorithm is not None:
                 for skip_idx in range(start_task_idx):
                     skip_task_id = task_order[skip_idx]
@@ -298,7 +298,7 @@ class ContinualVLATrainer(TrainerUtils):
                 steps_per_task=steps_per_task,
             )
 
-            # Post-task CL hook (ER populates, EWC computes Fisher, RETAIN merges, …)
+            # Post-task CL hook (ER populates, RETAIN merges, …)
             if self.cl_algorithm is not None:
                 logger.info(
                     f"Running {self.cl_algorithm.name}.on_task_end for task {task_id}..."
@@ -388,7 +388,7 @@ class ContinualVLATrainer(TrainerUtils):
         """Execute a single training step.
 
         The task loss is the model's own `action_loss` plus an optional
-        algorithm-provided penalty (EWC / SI regularizer).  Algorithms that
+        algorithm-provided penalty (regularization-based methods). Algorithms that
         don't need a penalty return ``None`` from :meth:`compute_penalty`.
         """
         with self.accelerator.accumulate(self.model):
@@ -522,7 +522,7 @@ class ContinualVLATrainer(TrainerUtils):
                 else:
                     torch.save(state_dict, checkpoint_path + "_pytorch_model.pt")
 
-            # Save CL algorithm state (ER buffer metadata, EWC Fisher stats, …)
+            # Save CL algorithm state (ER buffer metadata, …)
             if self.cl_algorithm is not None:
                 cl_state = self.cl_algorithm.state_dict()
                 with open(checkpoint_path + "_cl_state.json", "w") as f:
