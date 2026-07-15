@@ -1,0 +1,35 @@
+# Diffusion Policy framework defaults.
+# The data pipeline owns state and action normalization; the model uses identity normalizers.
+
+framework:
+  name: DiffusionPolicy
+  action_model:
+    # Observation and action sequences.
+    horizon: 16
+    n_obs_steps: 2
+    n_action_steps: 8
+    action_encoding: joints
+    action_dim: 8
+    state_dim: 8
+
+    # Multi-camera image observations.
+    image_keys:
+      - cam0_rgb
+      - cam1_rgb
+    image_size:
+      - 224
+      - 224
+    pretrained_backbone: true
+
+    # DDPM and conditional U-Net.
+    num_train_timesteps: 100
+    num_inference_steps: null
+    down_dims:
+      - 256
+      - 512
+      - 1024
+    kernel_size: 5
+    diffusion_step_embed_dim: 256
+    cond_predict_scale: true
+    n_groups: 8
+    obs_as_global_cond: true
