@@ -107,6 +107,7 @@ nav:
     - quickstart/index.md
     - Installation: quickstart/installation.md
     - Baseline VLA: quickstart/baselineVLA.md
+    - Diffusion Policy: quickstart/diffusion_policy.md
     - NeuroVLA: quickstart/neurovla.md
     - RL-Token: quickstart/rl_token.md
     - World Model: quickstart/world_model.md
