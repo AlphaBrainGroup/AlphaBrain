@@ -16,7 +16,8 @@ import tyro
 from libero.libero import benchmark, get_libero_path
 from libero.libero.envs import OffScreenRenderEnv
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-from examples.LIBERO.eval_files.model2libero_interface import ModelClient
+from model2libero_interface import ModelClient
+from alphabrain_ui.evaluation_result import EvaluationResultWriter, resolve_result_path
 
 
 LIBERO_DUMMY_ACTION = [0.0] * 6 + [-1.0]
@@ -40,12 +41,15 @@ class Args:
     task_suite_name: str = "libero_goal"  # Task suite. Options: libero_spatial, libero_object, libero_goal, libero_10, libero_90
     num_steps_wait: int = 10  # Number of steps to wait for objects to stabilize i n sim
     num_trials_per_task: int = 50  # Number of rollouts per task
+    task_ids: str = ""  # Optional comma-separated suite task IDs; empty = all
+    task_limit: int = 0  # Evaluate at most this many selected tasks; 0 = all
 
     #################################################################################################################
     # Utils
     #################################################################################################################
     video_out_path: str = "experiments/libero/logs"  # Path to save videos
     log_path: str = "experiments/libero/logs"
+    result_out_path: str = ""  # Explicit evaluation-result-v1.json path (optional)
 
     seed: int = 7  # Random Seed (for reproducibility)
 
@@ -54,10 +58,36 @@ class Args:
     post_process_action: bool = True
 
     job_name: str = "test"
+    num_views: int = 2
 
 
 def eval_libero(args: Args) -> None:
+    result_path = resolve_result_path(args.result_out_path, args.video_out_path)
+    result_writer = EvaluationResultWriter(
+        result_path,
+        benchmark="libero_plus",
+        checkpoint=args.pretrained_path,
+        suite={"name": args.task_suite_name, "task_ids": args.task_ids},
+        parameters={
+            "num_trials_per_task": args.num_trials_per_task,
+            "task_limit": args.task_limit,
+            "num_steps_wait": args.num_steps_wait,
+            "num_views": args.num_views,
+            "seed": args.seed,
+        },
+        metadata={"experimental": True},
+    )
+    try:
+        _eval_libero(args, result_writer)
+    except BaseException as exc:
+        result_writer.fail(f"{type(exc).__name__}: {exc}")
+        raise
+
+
+def _eval_libero(args: Args, result_writer: EvaluationResultWriter) -> None:
     logging.info(f"Arguments: {json.dumps(dataclasses.asdict(args), indent=4)}")
+    if args.num_trials_per_task <= 0:
+        raise ValueError("num_trials_per_task must be positive")
 
     # Set random seed
     np.random.seed(args.seed)
@@ -71,6 +101,7 @@ def eval_libero(args: Args) -> None:
     # args.video_out_path = f"{date_base}+{args.job_name}"
     
     pathlib.Path(args.video_out_path).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(args.log_path).mkdir(parents=True, exist_ok=True)
 
     if args.task_suite_name == "libero_spatial":
         max_steps = 220  # longest training demo has 193 steps
@@ -93,22 +124,57 @@ def eval_libero(args: Args) -> None:
     )
 
     disturb_res = {}
-    LIBERO_HOME = os.environ.get('LIBERO_HOME', 'path_to_LIBERO-plus_home')
-    with open(os.path.join(LIBERO_HOME,'libero/libero/benchmark/task_classification.json')) as f:
+    libero_home = os.environ.get("LIBERO_PLUS_HOME") or os.environ.get("LIBERO_HOME")
+    classification_candidates = []
+    if libero_home:
+        classification_candidates.extend(
+            [
+                Path(libero_home) / "libero/libero/benchmark/task_classification.json",
+                Path(libero_home) / "libero/benchmark/task_classification.json",
+            ]
+        )
+    classification_candidates.append(
+        Path(get_libero_path("bddl_files")).parent
+        / "benchmark/task_classification.json"
+    )
+    classification_path = next(
+        (path for path in classification_candidates if path.is_file()), None
+    )
+    if classification_path is None:
+        checked = ", ".join(str(path) for path in classification_candidates)
+        raise FileNotFoundError(
+            "LIBERO-plus task_classification.json was not found. Set "
+            f"LIBERO_PLUS_HOME (checked: {checked})."
+        )
+    with classification_path.open(encoding="utf-8") as f:
         TASK_MAPPING = json.load(f)[args.task_suite_name]
     ID2CATEGORY = {}
     for item in TASK_MAPPING:
         category = item["category"]
         item_name = item["name"]
-        ID2CATEGORY[item['id']] = (category, item_name)
+        ID2CATEGORY[int(item['id'])] = (category, item_name)
         if category not in disturb_res:
             disturb_res[category] = {"total_count": 0, "success_count": 0}
-        disturb_res[category]["total_count"] += 1
 
     # Start evaluation
 
     total_episodes, total_successes = 0, 0
+    filter_ids = (
+        {int(value) for value in args.task_ids.split(",") if value.strip()}
+        if args.task_ids
+        else None
+    )
+    if args.task_limit < 0:
+        raise ValueError("task_limit must be non-negative")
+    evaluated_tasks = 0
     for task_id in tqdm.tqdm(range(num_tasks_in_suite)):
+        if filter_ids is not None and task_id not in filter_ids:
+            continue
+        if args.task_limit and evaluated_tasks >= args.task_limit:
+            break
+        evaluated_tasks += 1
+        task_category, classified_task_name = ID2CATEGORY[task_id + 1]
+        disturb_res[task_category]["total_count"] += args.num_trials_per_task
         
         # Get task
         task = task_suite.get_task(task_id)
@@ -122,6 +188,7 @@ def eval_libero(args: Args) -> None:
         # Start episodes
         task_episodes, task_successes = 0, 0
         for episode_idx in tqdm.tqdm(range(args.num_trials_per_task)):
+            episode_started_at = time.monotonic()
             
             logging.info(f"\nTask: {task_description}")
 
@@ -182,7 +249,11 @@ def eval_libero(args: Args) -> None:
 
                 # align key with model API --> 这里给了两个图像 --> check training
                 example_dict = {
-                    "image": [observation["observation.primary"][0], observation["observation.wrist_image"][0]],
+                    "image": [observation["observation.primary"][0]] + (
+                        [observation["observation.wrist_image"][0]]
+                        if args.num_views >= 2
+                        else []
+                    ),
                     "lang": observation["instruction"][0],
                 }
               
@@ -232,12 +303,30 @@ def eval_libero(args: Args) -> None:
             # Save a replay video of the episode
             suffix = "success" if done else "failure"
             task_segment = task_description.replace(" ", "_")
+            rollout_path = (
+                pathlib.Path(args.video_out_path)
+                / f"rollout_{classified_task_name}_episode{episode_idx}_{suffix}.mp4"
+            )
 
             imageio.mimwrite(
-                pathlib.Path(args.video_out_path)
-                / f"rollout_{ID2CATEGORY[task_id+1][1]}_episode{episode_idx}_{suffix}.mp4",
+                rollout_path,
                 [np.asarray(x) for x in replay_images],
                 fps=25,
+            )
+
+            result_writer.record_episode(
+                task_id=f"{args.task_suite_name}:{task_id}",
+                task_name=classified_task_name,
+                episode_index=episode_idx,
+                success=bool(done),
+                steps=step,
+                duration_seconds=time.monotonic() - episode_started_at,
+                video_path=rollout_path,
+                metadata={
+                    "suite_task_id": task_id,
+                    "category": task_category,
+                    "language": str(task_description),
+                },
             )
             
             full_actions = np.stack(full_actions)
@@ -258,12 +347,21 @@ def eval_libero(args: Args) -> None:
         logging.info(
             f"Current total success rate: {float(total_successes) / float(total_episodes)}"
         )
+    if total_episodes == 0:
+        raise ValueError("No LIBERO-plus tasks were selected")
     with open(os.path.join(args.log_path,f'{args.task_suite_name}.json'), 'w', encoding='utf-8') as f:
         json.dump(disturb_res, f)
     logging.info(
         f"Total success rate: {float(total_successes) / float(total_episodes)}"
     )
     logging.info(f"Total episodes: {total_episodes}")
+    result_writer.finish(
+        metadata={
+            "experimental": True,
+            "classification_path": str(classification_path),
+            "categories": disturb_res,
+        }
+    )
 
 
 def _get_libero_env(task, resolution, seed):

@@ -1,0 +1,4 @@
+interface:
+  display_name: "AlphaBrain Data and Resources"
+  short_description: "Manage AlphaBrain models, datasets, and templates"
+  default_prompt: "Use $alphabrain-data-resources to inspect or manage AlphaBrain resources, datasets, mixtures, or templates."

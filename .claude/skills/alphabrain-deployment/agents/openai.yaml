@@ -1,0 +1,4 @@
+interface:
+  display_name: "AlphaBrain Deployment"
+  short_description: "Inspect, serve, and test AlphaBrain checkpoints"
+  default_prompt: "Use $alphabrain-deployment to preflight, launch, and verify an AlphaBrain model deployment."

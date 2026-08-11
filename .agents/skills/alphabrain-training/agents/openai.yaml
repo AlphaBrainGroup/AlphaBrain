@@ -1,0 +1,4 @@
+interface:
+  display_name: "AlphaBrain Training"
+  short_description: "Resolve, preflight, launch, and monitor training"
+  default_prompt: "Use $alphabrain-training to prepare, submit, and verify this AlphaBrain training run."

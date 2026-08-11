@@ -29,6 +29,10 @@ from AlphaBrain.training.reinforcement_learning.envs.libero_env import MAX_STEPS
 from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_actor_critic import ActionTokenActor, ActionTokenCritic
 from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_encoder_decoder import ActionTokenEncoderDecoder
 from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer import action_token_collect_group, action_token_ppo_loss
+from AlphaBrain.training.trainer_utils.local_metrics import append_local_metrics
+from AlphaBrain.training.trainer_utils.wandb_integration import configure_wandb_module
+
+configure_wandb_module(wandb)
 
 logger = logging.getLogger(__name__)
 
@@ -305,6 +309,13 @@ def run_rl(args):
                          f"vf={log_entry['vf_loss']:.4f} ratio={log_entry['ratio_mean']:.3f} "
                          f"clip_frac={log_entry['clip_frac']:.3f} "
                          f"total_env_steps={total_env_steps}")
+
+            append_local_metrics(
+                args.output_dir,
+                log_entry,
+                phase="rl",
+                iteration=iteration,
+            )
 
             if args.use_wandb:
                 wandb_log = {

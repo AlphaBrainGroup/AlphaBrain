@@ -5,6 +5,7 @@
 # Modification: [suport topdowm processing, suport param from config].
 
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Sequence
 from omegaconf import OmegaConf
 import glob
@@ -87,25 +88,41 @@ def get_vla_dataset(
     data_root_dir = data_cfg.data_root_dir
     dataset_mix = data_cfg.dataset_mix
     delete_pause_frame = data_cfg.get("delete_pause_frame", False)
-    mixture_spec = DATASET_NAMED_MIXTURES[dataset_mix]
+    # UI-managed mixtures are embedded into the immutable resolved config.
+    # Keep the named registry as the default so every existing recipe and CLI
+    # continues to behave exactly as before.
+    managed_spec = data_cfg.get("mixture_spec", None)
+    mixture_spec = managed_spec if managed_spec else DATASET_NAMED_MIXTURES[dataset_mix]
     data_root_dir = Path(data_root_dir)
     included_datasets, filtered_mixture_spec = set(), []
-    for d_name, d_weight, robot_type in mixture_spec:
-        expanded_entries = _expand_mixture_entry(data_root_dir, d_name, robot_type)
+    for entry in mixture_spec:
+        entry_root = data_root_dir
+        if isinstance(entry, Mapping):
+            entry_path = Path(str(entry.get("path") or data_root_dir)).expanduser()
+            pattern = str(entry.get("pattern") or "")
+            if pattern:
+                entry_root, d_name = entry_path, pattern
+            else:
+                entry_root, d_name = entry_path.parent, entry_path.name
+            d_weight = float(entry.get("weight", 1.0))
+            robot_type = str(entry.get("robot_type") or "")
+        else:
+            d_name, d_weight, robot_type = entry
+        expanded_entries = _expand_mixture_entry(entry_root, d_name, robot_type)
         if not expanded_entries:
-            print(f"Warning: No datasets matched `{d_name}` under `{data_root_dir}`")
+            print(f"Warning: No datasets matched `{d_name}` under `{entry_root}`")
         for expanded_name, expanded_robot_type in expanded_entries:
-            dataset_key = (expanded_name, expanded_robot_type)
+            dataset_key = (str(entry_root), expanded_name, expanded_robot_type)
             if dataset_key in included_datasets:
                 print(f"Skipping Duplicate Dataset: `{(expanded_name, d_weight, expanded_robot_type)}`")
                 continue
 
             included_datasets.add(dataset_key)
-            filtered_mixture_spec.append((expanded_name, d_weight, expanded_robot_type))
+            filtered_mixture_spec.append((entry_root, expanded_name, d_weight, expanded_robot_type))
 
     dataset_mixture = []
-    for d_name, d_weight, robot_type in filtered_mixture_spec:
-        dataset_mixture.append((make_LeRobotSingleDataset(data_root_dir, d_name, robot_type, delete_pause_frame=delete_pause_frame, data_cfg=data_cfg), d_weight))
+    for entry_root, d_name, d_weight, robot_type in filtered_mixture_spec:
+        dataset_mixture.append((make_LeRobotSingleDataset(entry_root, d_name, robot_type, delete_pause_frame=delete_pause_frame, data_cfg=data_cfg), d_weight))
 
     return LeRobotMixtureDataset(
         dataset_mixture,

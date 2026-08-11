@@ -2,6 +2,22 @@ debug/
 ckpts/
 third_party/
 .env
+.env.*
+!.env.example
+
+# AlphaBrain Web UI runtime state and local databases
+.alphabrain-ui/
+.alphabrain-demo/
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-shm
+*.sqlite3-wal
+
+# JavaScript package-manager diagnostics
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -109,6 +125,7 @@ celerybeat.pid
 
 # Environments
 .venv
+.venv-*/
 env/
 venv/
 ENV/
@@ -228,14 +245,22 @@ dev_notes
 # zhanghe
 experiments
 logs
-.claude
+# Keep personal Claude settings and unrelated local Skills ignored while
+# versioning the generated AlphaBrain Skill mirror.
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/alphabrain-*/
+!.claude/skills/alphabrain-*/**
 .codex
 
+# Repository-scoped instructions are part of the AlphaBrain agent interface.
+!AGENTS.md
 
 
 
-# 测试脚本（不推送）
-tests/
+
+# 正式 tests/ 测试套件需要纳入版本控制；仅忽略本地临时调试脚本。
 smoke_test_*.py
 fix_init.py
 scripts/llama_ab_test_*.sh

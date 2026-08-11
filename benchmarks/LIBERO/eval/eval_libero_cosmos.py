@@ -46,6 +46,7 @@ from libero.libero import benchmark, get_libero_path
 from libero.libero.envs import OffScreenRenderEnv
 
 from deployment.model_server.tools.websocket_policy_client import WebsocketClientPolicy
+from alphabrain_ui.evaluation_result import EvaluationResultWriter, resolve_result_path
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -66,9 +67,12 @@ class Args:
     task_suite_name: str = "libero_goal"
     num_steps_wait: int = 10
     num_trials_per_task: int = 2
+    task_ids: str = ""  # Optional comma-separated suite task IDs; empty = all
+    task_limit: int = 0  # Evaluate at most this many selected tasks; 0 = all
 
     # Output
     video_out_path: str = "experiments/libero/cosmos_logs"
+    result_out_path: str = ""  # Explicit evaluation-result-v1.json path (optional)
     job_name: str = "cosmos_eval"
     seed: int = 0  # Must match original cosmos-policy (env.seed(0) affects object positions)
 
@@ -122,7 +126,32 @@ def _binarize_gripper(open_val: float) -> float:
 
 
 def eval_libero_cosmos(args: Args) -> None:
+    result_path = resolve_result_path(args.result_out_path, args.video_out_path)
+    result_writer = EvaluationResultWriter(
+        result_path,
+        benchmark="libero",
+        checkpoint=args.ckpt_dir,
+        suite={"name": args.task_suite_name, "task_ids": args.task_ids},
+        parameters={
+            "num_trials_per_task": args.num_trials_per_task,
+            "num_steps_wait": args.num_steps_wait,
+            "task_limit": args.task_limit,
+            "seed": args.seed,
+            "num_views": 2,
+        },
+        metadata={"client_adapter": "cosmos_policy"},
+    )
+    try:
+        _eval_libero_cosmos(args, result_writer)
+    except BaseException as exc:
+        result_writer.fail(f"{type(exc).__name__}: {exc}")
+        raise
+
+
+def _eval_libero_cosmos(args: Args, result_writer: EvaluationResultWriter) -> None:
     logging.info(f"CosmosPolicy LIBERO eval: {dataclasses.asdict(args)}")
+    if args.num_trials_per_task <= 0:
+        raise ValueError("num_trials_per_task must be positive")
 
     # Load dataset statistics
     stats_path = os.path.join(args.ckpt_dir, "libero_dataset_statistics.json")
@@ -158,7 +187,20 @@ def eval_libero_cosmos(args: Args) -> None:
     total_episodes, total_successes = 0, 0
     chunk_size = 16  # cosmos uses 16-step action chunks
 
+    filter_ids = (
+        {int(value) for value in args.task_ids.split(",") if value.strip()}
+        if args.task_ids
+        else None
+    )
+    if args.task_limit < 0:
+        raise ValueError("task_limit must be non-negative")
+    evaluated_tasks = 0
     for task_id in tqdm.tqdm(range(num_tasks)):
+        if filter_ids is not None and task_id not in filter_ids:
+            continue
+        if args.task_limit and evaluated_tasks >= args.task_limit:
+            break
+        evaluated_tasks += 1
         task = task_suite.get_task(task_id)
         initial_states = task_suite.get_task_init_states(task_id)
         env, task_description = _get_libero_env(task, LIBERO_ENV_RESOLUTION, args.seed)
@@ -166,6 +208,7 @@ def eval_libero_cosmos(args: Args) -> None:
         task_episodes, task_successes = 0, 0
 
         for episode_idx in tqdm.tqdm(range(args.num_trials_per_task)):
+            episode_started_at = time.monotonic()
             logging.info(f"\nTask: {task_description}")
 
             env.reset()
@@ -247,6 +290,17 @@ def eval_libero_cosmos(args: Args) -> None:
             )
             imageio.mimwrite(str(video_path), [np.asarray(x) for x in replay_images], fps=10)
 
+            result_writer.record_episode(
+                task_id=f"{args.task_suite_name}:{task_id}",
+                task_name=str(task_description),
+                episode_index=episode_idx,
+                success=bool(done),
+                steps=max(0, t - args.num_steps_wait),
+                duration_seconds=time.monotonic() - episode_started_at,
+                video_path=video_path,
+                metadata={"suite_task_id": task_id},
+            )
+
             logging.info(f"Episode {episode_idx}: {'SUCCESS' if done else 'FAILURE'}")
             logging.info(
                 f"Total: {total_successes}/{total_episodes} "
@@ -260,12 +314,15 @@ def eval_libero_cosmos(args: Args) -> None:
         )
         env.close()
 
+    if total_episodes == 0:
+        raise ValueError("No LIBERO tasks were selected")
     logging.info(
         f"\n=== FINAL RESULTS ===\n"
         f"Task suite: {args.task_suite_name}\n"
         f"Total success rate: {total_successes}/{total_episodes} "
         f"= {total_successes / max(total_episodes, 1) * 100:.1f}%"
     )
+    result_writer.finish(metadata={"client_adapter": "cosmos_policy"})
 
 
 if __name__ == "__main__":

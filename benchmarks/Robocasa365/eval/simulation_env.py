@@ -21,6 +21,7 @@ from benchmarks.Robocasa365.eval.wrappers.video_recording_wrapper import (
     VideoRecorder,
     VideoRecordingWrapper,
 )
+from alphabrain_ui.evaluation_result import EvaluationResultWriter, resolve_result_path
 
 
 @dataclass
@@ -49,6 +50,7 @@ class SimulationConfig:
     split: str = "target"
     n_episodes: int = 50
     n_envs: int = 1
+    seed: int = 7
     video: VideoConfig = field(default_factory=VideoConfig)
     multistep: MultiStepConfig = field(default_factory=MultiStepConfig)
 
@@ -84,7 +86,8 @@ class SimulationInferenceEnv:
         current_lengths = [0] * config.n_envs
         episode_successes = []
 
-        obs, _ = self.env.reset()
+        # Gymnasium derives stable, distinct worker seeds from this base value.
+        obs, _ = self.env.reset(seed=config.seed)
         while completed_episodes < config.n_episodes:
             actions = self.get_action(obs)["actions"]
             next_obs, rewards, terminations, truncations, env_infos = self.env.step(actions)
@@ -103,16 +106,19 @@ class SimulationInferenceEnv:
                     current_lengths[env_idx] = 0
             obs = next_obs
 
-        self.env.reset()
+        self.env.reset(seed=config.seed)
         self.env.close()
         self.env = None
         print(f"Collecting {config.n_episodes} episodes took {time.time() - start_time:.2f} seconds")
-        return config.env_name, episode_successes
+        return config.env_name, episode_successes[: config.n_episodes]
 
 
 def _create_single_env(config: SimulationConfig, idx: int) -> gym.Env:
     env = gym.make(config.env_name, split=config.split, enable_render=True)
-    if config.video.video_dir is not None:
+    # Recorder processes cannot safely rename files in one shared directory.
+    # Metrics still cover every environment; replay video is optional and is
+    # captured from the first vector worker only.
+    if config.video.video_dir is not None and idx == 0:
         video_recorder = VideoRecorder.create_h264(
             fps=config.video.fps,
             codec=config.video.codec,
@@ -144,6 +150,7 @@ class Args:
     resize_size: list[int] = dataclasses.field(default_factory=lambda: [224, 224])
     task_set: str = "target50"
     task_list: str = ""              # comma-separated env names, takes precedence over task_set if set
+    task_limit: int = 0               # evaluate at most this many selected tasks; 0 = all
     sort_tasks: bool = True          # sort task names alphabetically before iterating
     split: str = "target"
     n_episodes: int = 50
@@ -151,15 +158,47 @@ class Args:
     n_action_steps: int = 16
     max_episode_steps: int = 1440
     video_out_path: str = "results/evaluation/robocasa365"
+    result_out_path: str = ""  # Explicit evaluation-result-v1.json path (optional)
     seed: int = 7
     pretrained_path: str = ""
 
 
 def eval_robocasa365(args: Args) -> None:
+    result_path = resolve_result_path(args.result_out_path, args.video_out_path)
+    result_writer = EvaluationResultWriter(
+        result_path,
+        benchmark="robocasa365",
+        checkpoint=args.pretrained_path,
+        suite={
+            "name": args.task_set if not args.task_list.strip() else "custom_task_list",
+            "task_set": args.task_set,
+            "task_list": args.task_list,
+            "split": args.split,
+        },
+        parameters={
+            "n_episodes": args.n_episodes,
+            "n_envs": args.n_envs,
+            "n_action_steps": args.n_action_steps,
+            "max_episode_steps": args.max_episode_steps,
+            "sort_tasks": args.sort_tasks,
+            "task_limit": args.task_limit,
+            "seed": args.seed,
+        },
+    )
+    try:
+        _eval_robocasa365(args, result_writer)
+    except BaseException as exc:
+        result_writer.fail(f"{type(exc).__name__}: {exc}")
+        raise
+
+
+def _eval_robocasa365(args: Args, result_writer: EvaluationResultWriter) -> None:
     from robocasa.utils.dataset_registry import TASK_SET_REGISTRY
     from robocasa.utils.dataset_registry_utils import get_task_horizon
 
     logging.info(f"Arguments: {json.dumps(dataclasses.asdict(args), indent=4)}")
+    if args.n_episodes <= 0:
+        raise ValueError("n_episodes must be positive")
     os.makedirs(args.video_out_path, exist_ok=True)
     np.random.seed(args.seed)
 
@@ -188,6 +227,12 @@ def eval_robocasa365(args: Args) -> None:
         # Preserve user-supplied order, but de-duplicate.
         seen = set()
         all_env_names = [n for n in all_env_names if not (n in seen or seen.add(n))]
+    if args.task_limit < 0:
+        raise ValueError("task_limit must be non-negative")
+    if args.task_limit:
+        all_env_names = all_env_names[: args.task_limit]
+    if not all_env_names:
+        raise ValueError("No RoboCasa365 tasks were selected")
 
     model = PolicyWarper(
         policy_ckpt_path=args.pretrained_path,
@@ -206,6 +251,35 @@ def eval_robocasa365(args: Args) -> None:
             print(f"Skipping {env_name}: stats.json already exists")
             with open(stats_path) as f:
                 aggregate_results[env_name] = json.load(f)
+            previous = aggregate_results[env_name]
+            previous_episodes = previous.get("episode_successes")
+            if isinstance(previous_episodes, list):
+                previous_videos = sorted(Path(task_video_dir).glob("*.mp4"))
+                for episode_idx, success in enumerate(previous_episodes):
+                    result_writer.record_episode(
+                        task_id=env_name,
+                        task_name=env_name,
+                        episode_index=episode_idx,
+                        success=bool(success),
+                        video_path=(
+                            previous_videos[episode_idx]
+                            if args.n_envs == 1 and episode_idx < len(previous_videos)
+                            else None
+                        ),
+                        metadata={"resumed": True},
+                    )
+            else:
+                num_episodes = int(previous.get("num_episodes", 0))
+                num_successes = round(
+                    float(previous.get("success_rate", 0.0)) * num_episodes
+                )
+                result_writer.record_task_summary(
+                    task_id=env_name,
+                    task_name=env_name,
+                    num_episodes=num_episodes,
+                    num_successes=num_successes,
+                    metadata={"resumed_legacy_stats": True},
+                )
             continue
 
         horizon = get_task_horizon(env_name)
@@ -217,6 +291,7 @@ def eval_robocasa365(args: Args) -> None:
             split=args.split,
             n_episodes=args.n_episodes,
             n_envs=args.n_envs,
+            seed=args.seed,
             video=VideoConfig(video_dir=task_video_dir),
             multistep=MultiStepConfig(
                 n_action_steps=args.n_action_steps,
@@ -225,13 +300,33 @@ def eval_robocasa365(args: Args) -> None:
         )
 
         print(f"Running simulation for {env_name}...")
+        videos_before = set(Path(task_video_dir).glob("*.mp4"))
         env_name_out, episode_successes = SimulationInferenceEnv(model=model).run_simulation(config)
+        videos_after = sorted(
+            set(Path(task_video_dir).glob("*.mp4")) - videos_before,
+            key=lambda path: (path.stat().st_mtime_ns, path.name),
+        )
         success_rate = float(np.mean(episode_successes))
         aggregate_results[env_name] = {
             "num_episodes": len(episode_successes),
             "success_rate": success_rate,
             "horizon": horizon,
+            "episode_successes": [bool(value) for value in episode_successes],
         }
+
+        for episode_idx, success in enumerate(episode_successes):
+            result_writer.record_episode(
+                task_id=env_name,
+                task_name=env_name,
+                episode_index=episode_idx,
+                success=bool(success),
+                video_path=(
+                    videos_after[episode_idx]
+                    if args.n_envs == 1 and episode_idx < len(videos_after)
+                    else None
+                ),
+                metadata={"split": args.split, "horizon": horizon, "seed": args.seed},
+            )
 
         with open(stats_path, "w", encoding="utf-8") as f:
             json.dump(aggregate_results[env_name], f, indent=2)
@@ -252,6 +347,9 @@ def eval_robocasa365(args: Args) -> None:
             indent=2,
         )
     print(f"Saved aggregate stats to {aggregate_path}")
+    result_writer.finish(
+        metadata={"task_sets": task_sets, "split": args.split}
+    )
 
 
 if __name__ == "__main__":

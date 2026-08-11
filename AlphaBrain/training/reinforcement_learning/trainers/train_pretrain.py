@@ -15,6 +15,10 @@ from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer
     collect_observations_fast,
     extract_action_queries_from_obs,
 )
+from AlphaBrain.training.trainer_utils.local_metrics import append_local_metrics
+from AlphaBrain.training.trainer_utils.wandb_integration import configure_wandb_module
+
+configure_wandb_module(wandb)
 
 logger = logging.getLogger(__name__)
 
@@ -140,13 +144,21 @@ def run_pretrain(args):
             epoch_losses.append(loss_val)
             global_step += 1
 
-            # Step-level wandb logging
-            if args.use_wandb and global_step % 10 == 0:
-                wandb.log({
+            # Step-level logging
+            if global_step % 10 == 0:
+                step_metrics = {
                     "pretrain/recon_loss_step": loss_val,
                     "pretrain/lr": optimizer.param_groups[0]["lr"],
                     "pretrain/global_step": global_step,
-                }, step=global_step)
+                }
+                append_local_metrics(
+                    args.output_dir,
+                    step_metrics,
+                    phase="pretrain",
+                    step=global_step,
+                )
+                if args.use_wandb:
+                    wandb.log(step_metrics, step=global_step)
 
             # Console progress every 20% of epoch
             if (b_idx + 1) % max(1, n_batches // 5) == 0:
@@ -159,12 +171,19 @@ def run_pretrain(args):
         logger.info(f"Pretrain epoch {epoch + 1}/{args.pretrain_epochs}: "
                      f"recon_loss={avg_loss:.6f} ({n_batches} batches x {bs})")
 
-        if args.use_wandb:
-            wandb.log({
+        epoch_metrics = {
                 "pretrain/recon_loss_epoch": avg_loss,
                 "pretrain/best_loss": min(best_loss, avg_loss),
                 "pretrain/epoch": epoch + 1,
-            }, step=global_step)
+        }
+        append_local_metrics(
+            args.output_dir,
+            epoch_metrics,
+            phase="pretrain",
+            step=global_step,
+        )
+        if args.use_wandb:
+            wandb.log(epoch_metrics, step=global_step)
 
         if avg_loss < best_loss:
             best_loss = avg_loss

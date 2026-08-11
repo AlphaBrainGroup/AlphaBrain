@@ -43,6 +43,9 @@ sagemaker = [
 where = ["."]
 exclude = [
     "tests",         # test directory
+    "tests.*",
+    "build",         # local wheel/build artifacts
+    "build.*",
     "cache",         # cache directory
     "playground",
     "results",       # result directory
@@ -60,6 +63,9 @@ exclude = [
 
 ]
 
+[tool.setuptools.package-data]
+alphabrain_ui = ["registry/*.yaml", "migrations/**/*.py", "migrations/*.mako"]
+
 [tool.black]
 line-length = 121
 target-version = ["py310"]
@@ -75,3 +81,10 @@ ignore = ["F722"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["E402", "F401"]
+"alphabrain_ui/app.py" = ["B008", "RUF001"]  # FastAPI Depends and intentional Chinese UI punctuation.
+"alphabrain_ui/dependencies.py" = ["B008"]
+"alphabrain_ui/capabilities.py" = ["RUF001"]  # Intentional Chinese UI punctuation.
+"alphabrain_ui/configuration.py" = ["RUF001"]
+"alphabrain_ui/deployment_preflight.py" = ["RUF001"]
+"alphabrain_ui/deployment_registry.py" = ["RUF001"]
+"alphabrain_ui/preflight.py" = ["RUF001"]

@@ -1,0 +1,4 @@
+interface:
+  display_name: "AlphaBrain Setup"
+  short_description: "Set up AlphaBrain runtimes and API access safely"
+  default_prompt: "Use $alphabrain-setup to configure and verify an AlphaBrain environment or API backend."

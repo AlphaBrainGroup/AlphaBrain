@@ -55,6 +55,36 @@ Full setup, training, evaluation, and deployment instructions live in our docume
 
 👉 **[AlphaBrain Documentation →](https://alphabraingroup.github.io/AlphaBrain/)**
 
+### Web research console
+
+AlphaBrain also ships a bilingual multi-user Web UI for visual model
+composition, specialized training workflows, dataset/resource management,
+FIFO GPU scheduling, live logs and curves, checkpoint publishing, authenticated
+WebSocket deployment, controlled Playground inference, and grouped
+LIBERO/RoboCasa evaluation with result-v2 matrices, series, artifacts, and
+rollout videos. Training, deployments, evaluations, and GPU utilities share one
+FIFO GPU queue. The UI can run in the AlphaBrain Python 3.10+ environment or
+use a separately configured model-server Python while preserving every
+command-line entry point.
+
+The evaluation wizard inspects checkpoint metadata in its first step, offers
+only wired model combinations, and reports missing local model dependencies
+before final preflight. Temporary evaluation policy servers are loopback-only;
+evaluation can also safely reuse a running UI-managed deployment without
+allocating a second GPU. A constrained Registry Overlay supports future
+experimental model/combination variants without accepting executable fields,
+and dated website reference results remain clearly separated from locally
+reproduced runs.
+
+```bash
+pip install -r requirements-ui.txt
+cd ui/frontend && npm install && npm run build && cd ../..
+bash scripts/run_ui.sh --mode lab --host 0.0.0.0 --port 8000
+```
+
+See [the Web UI quickstart](docs/quickstart/web_ui.md) for personal/laboratory
+setup, resource paths, and security notes.
+
 ---
 
 ## 🔬 Key Features

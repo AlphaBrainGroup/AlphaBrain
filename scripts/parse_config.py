@@ -8,11 +8,14 @@
   - ${ENV_VAR:-default} 语法的环境变量展开
   - paths.pretrained_models_dir 与 base_vlm 的自动拼接
 """
-import os
-import sys
-import re
-import yaml
 import argparse
+import json
+import os
+import re
+import shlex
+import sys
+
+import yaml
 
 
 def expand_env_vars(value: str) -> str:
@@ -56,46 +59,103 @@ def parse_config(config_path: str, mode: str):
     is_eval = mode_config.get('type') == 'eval'
 
     # 输出环境变量
-    print(f"export WANDB_MODE={mode_config.get('wandb_mode', env_config.get('wandb_mode', 'disabled'))}")
+    print(
+        "export WANDB_MODE="
+        + shlex.quote(str(mode_config.get('wandb_mode', env_config.get('wandb_mode', 'disabled'))))
+    )
 
     # NCCL 配置
     nccl = env_config.get('nccl', {})
     if 'ib_hca' in nccl:
-        print(f"export NCCL_IB_HCA={nccl['ib_hca']}")
+        print(f"export NCCL_IB_HCA={shlex.quote(str(nccl['ib_hca']))}")
     if 'blocking_wait' in nccl:
-        print(f"export TORCH_NCCL_BLOCKING_WAIT={nccl['blocking_wait']}")
+        print(f"export TORCH_NCCL_BLOCKING_WAIT={shlex.quote(str(nccl['blocking_wait']))}")
     if 'async_error_handling' in nccl:
-        print(f"export TORCH_NCCL_ASYNC_ERROR_HANDLING={nccl['async_error_handling']}")
+        print(f"export TORCH_NCCL_ASYNC_ERROR_HANDLING={shlex.quote(str(nccl['async_error_handling']))}")
     if 'timeout' in nccl:
-        print(f"export NCCL_TIMEOUT={nccl['timeout']}")
+        print(f"export NCCL_TIMEOUT={shlex.quote(str(nccl['timeout']))}")
     if 'socket_timeout_ms' in nccl:
-        print(f"export NCCL_SOCKET_TIMEOUT_MS={nccl['socket_timeout_ms']}")
+        print(f"export NCCL_SOCKET_TIMEOUT_MS={shlex.quote(str(nccl['socket_timeout_ms']))}")
 
     if is_eval:
         # === 评估模式输出 ===
-        checkpoint = expand_env_vars(mode_config.get('checkpoint', ''))
-        benchmark = mode_config.get('benchmark', 'libero')
-        print(f"EVAL_CHECKPOINT='{checkpoint}'")
-        print(f"EVAL_BENCHMARK='{benchmark}'")
-        print(f"TASK_SUITE='{mode_config.get('task_suite', mode_config.get('task_set', 'libero_goal'))}'")
-        print(f"NUM_TRIALS={mode_config.get('num_trials', 50)}")
-        print(f"EVAL_HOST='{expand_env_vars(mode_config.get('host', '127.0.0.1'))}'")
-        print(f"EVAL_PORT={mode_config.get('port', 5694)}")
-        print(f"EVAL_GPU_ID={mode_config.get('gpu_id', 0)}")
-        print(f"EVAL_USE_BF16={'true' if mode_config.get('use_bf16', True) else 'false'}")
-        print(f"EVAL_SERVER_PYTHON='{expand_env_vars(mode_config.get('server_python', ''))}'")
-        print(f"EVAL_CLIENT_PYTHON='{expand_env_vars(mode_config.get('client_python', ''))}'")
-        print(f"EVAL_CLIENT_PYTHONPATH='{expand_env_vars(mode_config.get('client_pythonpath', ''))}'")
-        print(f"EVAL_ENV_NAME='{expand_env_vars(mode_config.get('env_name', ''))}'")
-        print(f"EVAL_TASK_SET='{expand_env_vars(mode_config.get('task_set', ''))}'")
-        print(f"EVAL_SPLIT='{expand_env_vars(mode_config.get('split', ''))}'")
-        print(f"EVAL_NUM_EPISODES={mode_config.get('n_episodes', mode_config.get('num_trials', 50))}")
-        print(f"EVAL_NUM_ENVS={mode_config.get('n_envs', 1)}")
-        print(f"EVAL_MAX_EPISODE_STEPS={mode_config.get('max_episode_steps', 720)}")
-        print(f"EVAL_N_ACTION_STEPS={mode_config.get('n_action_steps', 12)}")
-        print(f"EVAL_NUMBA_DISABLE_JIT='{expand_env_vars(str(mode_config.get('numba_disable_jit', 1)))}'")
-        print(f"EVAL_MUJOCO_GL='{expand_env_vars(mode_config.get('mujoco_gl', 'egl'))}'")
-        print(f"EVAL_PYOPENGL_PLATFORM='{expand_env_vars(mode_config.get('pyopengl_platform', 'egl'))}'")
+        def eval_int(name, default):
+            value = mode_config.get(name, default)
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise ValueError(f"Eval mode {name} must be an integer")
+            return value
+
+        checkpoint = expand_env_vars(str(mode_config.get('checkpoint', '')))
+        benchmark = expand_env_vars(str(mode_config.get('benchmark', 'libero')))
+        task_suite = expand_env_vars(
+            str(mode_config.get('task_suite', mode_config.get('task_set', 'libero_goal')))
+        )
+        use_bf16 = mode_config.get('use_bf16', True)
+        if not isinstance(use_bf16, bool):
+            raise ValueError("Eval mode use_bf16 must be a boolean")
+        sort_tasks = mode_config.get('sort_tasks', True)
+        if not isinstance(sort_tasks, bool):
+            raise ValueError("Eval mode sort_tasks must be a boolean")
+        reuse_server = mode_config.get('reuse_server', False)
+        if not isinstance(reuse_server, bool):
+            raise ValueError("Eval mode reuse_server must be a boolean")
+        print(f"EVAL_CHECKPOINT={shlex.quote(checkpoint)}")
+        print(f"EVAL_BENCHMARK={shlex.quote(benchmark)}")
+        print(f"TASK_SUITE={shlex.quote(task_suite)}")
+        num_trials = eval_int('num_trials', 50)
+        print(f"NUM_TRIALS={num_trials}")
+        print(f"EVAL_HOST={shlex.quote(expand_env_vars(str(mode_config.get('host', '127.0.0.1'))))}")
+        print(f"EVAL_PORT={eval_int('port', 5694)}")
+        print(f"EVAL_GPU_ID={eval_int('gpu_id', 0)}")
+        print(f"EVAL_USE_BF16={'true' if use_bf16 else 'false'}")
+        print(f"EVAL_REUSE_SERVER={'true' if reuse_server else 'false'}")
+        print(f"EVAL_SERVER_PYTHON={shlex.quote(expand_env_vars(str(mode_config.get('server_python', ''))))}")
+        server_entrypoint = expand_env_vars(
+            str(mode_config.get(
+                'server_entrypoint',
+                'deployment/model_server/server_policy.py',
+            ))
+        )
+        server_args = mode_config.get('server_args', [])
+        if not isinstance(server_args, list) or not all(
+            isinstance(item, (str, int, float)) and not isinstance(item, bool)
+            for item in server_args
+        ):
+            raise ValueError("Eval mode server_args must be a list of scalar values")
+        server_args = [expand_env_vars(str(item)) for item in server_args]
+        if any('\n' in item or '\r' in item for item in server_args):
+            raise ValueError("Eval mode server_args may not contain newlines")
+        print(f"EVAL_SERVER_ENTRYPOINT={shlex.quote(server_entrypoint)}")
+        print(f"EVAL_SERVER_ARGS_JSON={shlex.quote(json.dumps(server_args))}")
+        print(f"EVAL_CLIENT_PYTHON={shlex.quote(expand_env_vars(str(mode_config.get('client_python', ''))))}")
+        print(f"EVAL_CLIENT_PYTHONPATH={shlex.quote(expand_env_vars(str(mode_config.get('client_pythonpath', ''))))}")
+        print(
+            f"EVAL_CLIENT_ENTRYPOINT={shlex.quote(expand_env_vars(str(mode_config.get('client_entrypoint', ''))))}"
+        )
+        print(f"EVAL_ENV_NAME={shlex.quote(expand_env_vars(str(mode_config.get('env_name', ''))))}")
+        print(f"EVAL_TASK_SET={shlex.quote(expand_env_vars(str(mode_config.get('task_set', ''))))}")
+        print(f"EVAL_SPLIT={shlex.quote(expand_env_vars(str(mode_config.get('split', ''))))}")
+        print(f"EVAL_NUM_EPISODES={eval_int('n_episodes', num_trials)}")
+        print(f"EVAL_NUM_ENVS={eval_int('n_envs', 1)}")
+        print(f"EVAL_MAX_EPISODE_STEPS={eval_int('max_episode_steps', 720)}")
+        print(f"EVAL_N_ACTION_STEPS={eval_int('n_action_steps', 12)}")
+        print(f"EVAL_TASK_IDS={shlex.quote(expand_env_vars(str(mode_config.get('task_ids', ''))))}")
+        print(f"EVAL_TASK_LIST={shlex.quote(expand_env_vars(str(mode_config.get('task_list', ''))))}")
+        # Keep an explicit UI-managed EVAL_TASK_LIMIT when an older generated
+        # config omits the field; run_eval.sh defaults it to zero otherwise.
+        if 'task_limit' in mode_config:
+            print(f"EVAL_TASK_LIMIT={eval_int('task_limit', 0)}")
+        print(f"EVAL_SEED={eval_int('seed', 7)}")
+        print(f"EVAL_SEED_CONFIGURED={'true' if 'seed' in mode_config else 'false'}")
+        print(f"EVAL_NUM_VIEWS={eval_int('num_views', 2)}")
+        print(f"EVAL_PREDICT_VIDEO={'true' if bool(mode_config.get('predict_video', False)) else 'false'}")
+        print(f"EVAL_SORT_TASKS={'true' if sort_tasks else 'false'}")
+        print(
+            f"EVAL_CONFIG_OUTPUT_DIR={shlex.quote(expand_env_vars(str(mode_config.get('output_dir', ''))))}"
+        )
+        print(f"EVAL_NUMBA_DISABLE_JIT={eval_int('numba_disable_jit', 1)}")
+        print(f"EVAL_MUJOCO_GL={shlex.quote(expand_env_vars(str(mode_config.get('mujoco_gl', 'egl'))))}")
+        print(f"EVAL_PYOPENGL_PLATFORM={shlex.quote(expand_env_vars(str(mode_config.get('pyopengl_platform', 'egl'))))}")
         print("IS_EVAL=true")
     else:
         # === 训练模式输出 ===

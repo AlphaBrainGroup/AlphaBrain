@@ -1,0 +1,4 @@
+interface:
+  display_name: "AlphaBrain Environment Troubleshooting"
+  short_description: "Diagnose AlphaBrain Python, CUDA, and runtime errors"
+  default_prompt: "Use $alphabrain-env-troubleshoot to diagnose this AlphaBrain environment or runtime failure."

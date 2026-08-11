@@ -25,7 +25,14 @@ class WebsocketClientPolicy:
         if port is not None:
             self._uri += f":{port}"
         self._packer = msgpack_numpy.Packer()
-        self._api_key = api_key
+        # Explicit credentials (including an explicit empty string) take
+        # precedence.  UI-managed evaluation injects its controller credential
+        # only into the child environment so it never appears in config or argv.
+        self._api_key = (
+            api_key
+            if api_key is not None
+            else os.environ.get("ALPHABRAIN_POLICY_API_KEY")
+        )
         self._ws, self._server_metadata = self._wait_for_server()
 
     def get_server_metadata(self) -> Dict:
@@ -34,7 +41,7 @@ class WebsocketClientPolicy:
     def _wait_for_server(self, timeout: float = 600) -> Tuple[websockets.sync.client.ClientConnection, Dict]:
         logging.info(f"Waiting for server at {self._uri}...")
         start_time = time.time()
-        
+
         for k in ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"):
             os.environ.pop(k, None)
         
@@ -95,5 +102,3 @@ class WebsocketClientPolicy:
             self._ws.close()
         except Exception:
             pass
-
-        

@@ -1,0 +1,1059 @@
+schema_version: 2
+registry_version: "2026.07.30"
+
+statuses:
+  verified:
+    label: {zh-CN: "已验证", en-US: "Verified"}
+    selectable_by_default: true
+  experimental:
+    label: {zh-CN: "实验性", en-US: "Experimental"}
+    selectable_by_default: false
+  unsupported:
+    label: {zh-CN: "未接通", en-US: "Unsupported"}
+    selectable_by_default: false
+
+components:
+  backbones:
+    - id: qwen2_5_vl
+      kind: vlm
+      status: verified
+      label: {zh-CN: "Qwen2.5-VL", en-US: "Qwen2.5-VL"}
+      description: {zh-CN: "Qwen2.5 视觉语言骨干", en-US: "Qwen2.5 vision-language backbone"}
+      default_pretrained: "${PRETRAINED_MODELS_DIR}/Qwen2.5-VL-3B-Instruct"
+    - id: qwen3_vl
+      kind: vlm
+      status: verified
+      label: {zh-CN: "Qwen3-VL", en-US: "Qwen3-VL"}
+      description: {zh-CN: "Qwen3 视觉语言骨干", en-US: "Qwen3 vision-language backbone"}
+      default_pretrained: "${PRETRAINED_MODELS_DIR}/Qwen3-VL-4B-Instruct"
+    - id: paligemma
+      kind: vlm
+      status: verified
+      label: {zh-CN: "PaliGemma 3B", en-US: "PaliGemma 3B"}
+      description: {zh-CN: "PaliGemma SigLIP + Gemma 骨干", en-US: "PaliGemma SigLIP + Gemma backbone"}
+      default_pretrained: "${PRETRAINED_MODELS_DIR}/paligemma-3b-pt-224"
+    - id: llama3_2_vision
+      kind: vlm
+      status: verified
+      label: {zh-CN: "Llama 3.2 Vision", en-US: "Llama 3.2 Vision"}
+      description: {zh-CN: "Llama 3.2 11B 视觉语言骨干", en-US: "Llama 3.2 11B vision-language backbone"}
+      default_pretrained: "${PRETRAINED_MODELS_DIR}/Llama-3.2-11B-Vision-Instruct"
+    - id: cosmos2
+      kind: world_model
+      status: verified
+      label: {zh-CN: "Cosmos Predict2", en-US: "Cosmos Predict2"}
+      default_pretrained: "data/pretrained_models/Cosmos-Predict2-2B-Video2World"
+    - id: cosmos2_5
+      kind: world_model
+      status: verified
+      label: {zh-CN: "Cosmos Predict2.5", en-US: "Cosmos Predict2.5"}
+      default_pretrained: "data/pretrained_models/Cosmos-Predict2.5-2B-diffusers"
+    - id: vjepa2
+      kind: world_model
+      status: verified
+      label: {zh-CN: "V-JEPA 2", en-US: "V-JEPA 2"}
+      default_pretrained: "data/pretrained_models/vjepa2"
+    - id: wan2_2
+      kind: world_model
+      status: verified
+      label: {zh-CN: "Wan 2.2", en-US: "Wan 2.2"}
+      default_pretrained: "data/pretrained_models/Wan2.2-TI2V-5B"
+    - id: toy
+      kind: debug
+      availability: demo_only
+      status: verified
+      label: {zh-CN: "ToyVLA（调试）", en-US: "ToyVLA (debug)"}
+
+  action_heads:
+    - id: mlp_regression
+      status: verified
+      label: {zh-CN: "MLP 动作回归头", en-US: "MLP regression head"}
+      description: {zh-CN: "动作 token 上的直接 L1 回归", en-US: "Direct L1 regression over action tokens"}
+    - id: flow_matching_dit
+      status: verified
+      label: {zh-CN: "Flow Matching DiT", en-US: "Flow Matching DiT"}
+      description: {zh-CN: "GR00T 风格扩散动作头", en-US: "GR00T-style diffusion action head"}
+    - id: pi05_action_expert
+      status: verified
+      label: {zh-CN: "PI0.5 Action Expert", en-US: "PI0.5 Action Expert"}
+      description: {zh-CN: "Gemma Action Expert + Flow Matching", en-US: "Gemma action expert with flow matching"}
+    - id: snn
+      status: verified
+      label: {zh-CN: "SNN 脉冲动作头", en-US: "SNN action head"}
+    - id: cosmos_policy_dit
+      status: verified
+      label: {zh-CN: "Cosmos Policy DiT", en-US: "Cosmos Policy DiT"}
+    - id: vla_adapter
+      status: experimental
+      label: {zh-CN: "VLA Adapter", en-US: "VLA Adapter"}
+
+  training_methods:
+    - id: imitation_learning
+      family: imitation_learning
+      status: verified
+      label: {zh-CN: "模仿学习", en-US: "Imitation learning"}
+    - id: r_stdp
+      family: brain_inspired
+      status: verified
+      label: {zh-CN: "R-STDP 混合微调", en-US: "R-STDP hybrid fine-tuning"}
+      requires_checkpoint: true
+    - id: continual_er
+      family: continual_learning
+      status: verified
+      label: {zh-CN: "持续学习：ER", en-US: "Continual learning: ER"}
+    - id: continual_mir
+      family: continual_learning
+      status: verified
+      label: {zh-CN: "持续学习：MIR", en-US: "Continual learning: MIR"}
+    - id: continual_ewc
+      family: continual_learning
+      status: experimental
+      label: {zh-CN: "持续学习：EWC", en-US: "Continual learning: EWC"}
+    - id: rlt_td3
+      family: rl_token
+      status: verified
+      label: {zh-CN: "RL Token + TD3", en-US: "RL Token + TD3"}
+      requires_checkpoint: true
+      stages: [encoder_pretrain, rl_offpolicy]
+    - id: rlt_a_td3
+      family: rl_token
+      status: verified
+      label: {zh-CN: "RL Token Action + TD3", en-US: "RL Token Action + TD3"}
+      requires_checkpoint: true
+      stages: [encoder_pretrain, rl_offpolicy]
+    - id: rlt_a_ppo
+      family: rl_token
+      status: unsupported
+      label: {zh-CN: "RL Token Action + PPO", en-US: "RL Token Action + PPO"}
+      requires_checkpoint: true
+      stages: [encoder_pretrain, rl_onpolicy]
+    - id: rlt_a_grpo
+      family: rl_token
+      status: experimental
+      label: {zh-CN: "RL Token Action + GRPO", en-US: "RL Token Action + GRPO"}
+      requires_checkpoint: true
+      stages: [encoder_pretrain, rl_grpo]
+    - id: vanilla_vla_ppo
+      family: reinforcement_learning
+      status: experimental
+      label: {zh-CN: "完整 VLA PPO", en-US: "Full VLA PPO"}
+      requires_checkpoint: true
+    - id: cotrain
+      family: multimodal_cotrain
+      status: experimental
+      label: {zh-CN: "VLA + VLM 联合训练", en-US: "VLA + VLM co-training"}
+    - id: vlm_only
+      family: vlm_only
+      status: experimental
+      label: {zh-CN: "仅 VLM 训练", en-US: "VLM-only training"}
+
+  datasets:
+    - id: libero
+      status: verified
+      label: {zh-CN: "LIBERO", en-US: "LIBERO"}
+      config: configs/datasets/libero.yaml
+      env_path: LIBERO_DATA_ROOT
+      mixes: [libero_goal, libero_spatial, libero_object, libero_10, libero_long, libero_all]
+      default_mix: libero_goal
+    - id: libero_paligemma
+      status: verified
+      label: {zh-CN: "LIBERO（PaliGemma 双视角）", en-US: "LIBERO (PaliGemma two-view)"}
+      config: configs/datasets/libero_paligemma.yaml
+      env_path: LIBERO_DATA_ROOT
+      mixes: [libero_goal, libero_spatial, libero_object, libero_10, libero_long, libero_all]
+      default_mix: libero_goal
+    - id: robocasa
+      status: verified
+      label: {zh-CN: "RoboCasa Tabletop", en-US: "RoboCasa Tabletop"}
+      config: configs/datasets/robocasa.yaml
+      env_path: ROBOCASA_TABLETOP_DATA_ROOT
+      mixes: [fourier_gr1_unified_1000]
+      default_mix: fourier_gr1_unified_1000
+    - id: robocasa365
+      status: verified
+      label: {zh-CN: "RoboCasa365", en-US: "RoboCasa365"}
+      config: configs/datasets/robocasa365.yaml
+      env_path: ROBOCASA365_DATA_ROOT
+      mixes: [robocasa365_pretrain300, robocasa365_target_composite_unseen]
+      default_mix: robocasa365_target_composite_unseen
+    - id: arx
+      status: experimental
+      label: {zh-CN: "ARX", en-US: "ARX"}
+      config: configs/datasets/arx.yaml
+      mixes: [arx_x5]
+      default_mix: arx_x5
+    - id: calvin
+      status: unsupported
+      label: {zh-CN: "CALVIN", en-US: "CALVIN"}
+      config: configs/datasets/calvin.yaml
+      mixes: [calvin_task_D_D]
+      default_mix: calvin_task_D_D
+    - id: oxe
+      status: experimental
+      label: {zh-CN: "Open X-Embodiment", en-US: "Open X-Embodiment"}
+      config: configs/datasets/oxe.yaml
+      mixes: [bridge_rt_1]
+      default_mix: bridge_rt_1
+    - id: robotwin
+      status: unsupported
+      label: {zh-CN: "RoboTwin", en-US: "RoboTwin"}
+      config: configs/datasets/robotwin.yaml
+      mixes: [robotwin, robotwin_all_50]
+      default_mix: robotwin
+    - id: custom
+      status: experimental
+      label: {zh-CN: "自定义 LeRobot 数据集", en-US: "Custom LeRobot dataset"}
+      config: configs/datasets/custom.yaml
+      mixes: []
+      default_mix: your_data_mix
+
+parameter_schemas:
+  common:
+    type: object
+    properties:
+      run_id: {type: string, minLength: 1, maxLength: 128, pattern: "^[A-Za-z0-9][A-Za-z0-9._-]*$", title: {zh-CN: "实验名称", en-US: "Run ID"}}
+      output_root_dir: {type: string, title: {zh-CN: "输出目录", en-US: "Output root"}}
+      seed: {type: integer, minimum: 0, default: 42, title: {zh-CN: "随机种子", en-US: "Seed"}}
+      per_device_batch_size: {type: integer, minimum: 1, default: 2, title: {zh-CN: "单卡批大小", en-US: "Per-device batch size"}}
+      gradient_accumulation_steps: {type: integer, minimum: 1, default: 1, title: {zh-CN: "梯度累积步数", en-US: "Gradient accumulation"}}
+      max_train_steps: {type: integer, minimum: 1, default: 30000, title: {zh-CN: "训练步数", en-US: "Training steps"}}
+      save_interval: {type: integer, minimum: 1, default: 5000, title: {zh-CN: "保存间隔", en-US: "Checkpoint interval"}}
+      eval_interval: {type: integer, minimum: 1, default: 5000, title: {zh-CN: "评测间隔", en-US: "Evaluation interval"}}
+      learning_rate: {type: number, exclusiveMinimum: 0, title: {zh-CN: "基础学习率", en-US: "Base learning rate"}}
+      pretrained_checkpoint: {type: string, title: {zh-CN: "预训练 Checkpoint", en-US: "Pretrained checkpoint"}}
+      data_root: {type: string, title: {zh-CN: "数据根目录", en-US: "Dataset root"}}
+  resources:
+    type: object
+    properties:
+      allocation: {type: string, enum: [auto, fixed], default: auto}
+      num_gpus: {type: integer, minimum: 1, default: 1}
+      gpu_ids: {type: array, items: {type: integer, minimum: 0}, uniqueItems: true}
+      main_process_port: {type: integer, minimum: 1024, maximum: 65535, default: 29500}
+      deepspeed_config: {type: string, default: configs/deepspeed/accelerate_zero2.yaml}
+  expert_overrides:
+    type: object
+    additionalProperties: true
+
+# Workflow schemas are consumed by both the resolver and the experiment
+# builder.  A field's config_path is the canonical resolved-config destination;
+# fields without one control orchestration rather than trainer configuration.
+workflow_schemas:
+  standard:
+    id: standard
+    schema_version: 1
+    title: {zh-CN: "标准训练", en-US: "Standard training"}
+    description: {zh-CN: "使用通用训练参数和仓库中已验证的配方。", en-US: "Uses common training parameters and a repository-backed recipe."}
+    fields: []
+
+  continual_learning:
+    id: continual_learning
+    schema_version: 1
+    title: {zh-CN: "持续学习工作台", en-US: "Continual-learning workbench"}
+    description: {zh-CN: "配置任务流、LoRA，以及 ER、MIR 或 EWC 的算法参数。", en-US: "Configure the task stream, LoRA, and ER, MIR, or EWC algorithm settings."}
+    fields:
+      - key: task_sequence
+        type: select
+        label: {zh-CN: "任务序列", en-US: "Task sequence"}
+        default: libero_goal
+        required: true
+        options:
+          - {value: libero_goal, label: {zh-CN: "LIBERO Goal", en-US: "LIBERO Goal"}}
+          - {value: libero_long, label: {zh-CN: "LIBERO Long", en-US: "LIBERO Long"}}
+          - {value: libero_10, label: {zh-CN: "LIBERO-10", en-US: "LIBERO-10"}}
+        config_path: continual_learning.task_sequence
+      - {key: steps_per_task, type: integer, label: {zh-CN: "每任务训练步数", en-US: "Steps per task"}, default: 10000, required: true, min: 1, config_path: continual_learning.steps_per_task}
+      - {key: save_checkpoint_per_task, type: boolean, label: {zh-CN: "每个任务保存 Checkpoint", en-US: "Save checkpoint per task"}, default: true, config_path: continual_learning.save_checkpoint_per_task}
+      - {key: lora_enabled, type: boolean, label: {zh-CN: "启用 LoRA", en-US: "Enable LoRA"}, default: true, config_path: lora.enabled}
+      - {key: lora_rank, type: integer, label: {zh-CN: "LoRA Rank", en-US: "LoRA rank"}, default: 32, min: 1, config_path: lora.rank, visible_when: {key: lora_enabled, equals: true}}
+      - {key: lora_alpha, type: integer, label: {zh-CN: "LoRA Alpha", en-US: "LoRA alpha"}, default: 16, min: 1, config_path: lora.alpha, visible_when: {key: lora_enabled, equals: true}}
+      - {key: lora_dropout, type: number, label: {zh-CN: "LoRA Dropout", en-US: "LoRA dropout"}, default: 0.05, min: 0, max: 1, config_path: lora.dropout, visible_when: {key: lora_enabled, equals: true}}
+      - {key: buffer_size_per_task, type: integer, label: {zh-CN: "每任务回放缓存", en-US: "Replay buffer per task"}, default: 1000, min: 1, config_path: continual_learning.algorithm.buffer_size_per_task, methods: [continual_er, continual_mir]}
+      - {key: replay_batch_ratio, type: number, label: {zh-CN: "回放批次比例", en-US: "Replay batch ratio"}, default: 0.5, min: 0, max: 1, config_path: continual_learning.algorithm.replay_batch_ratio, methods: [continual_er, continual_mir]}
+      - {key: balanced_sampling, type: boolean, label: {zh-CN: "平衡采样", en-US: "Balanced sampling"}, default: true, config_path: continual_learning.algorithm.balanced_sampling, methods: [continual_er, continual_mir]}
+      - {key: mir_refresh_interval, type: integer, label: {zh-CN: "MIR 刷新间隔", en-US: "MIR refresh interval"}, default: 50, min: 1, config_path: continual_learning.algorithm.mir_refresh_interval, methods: [continual_mir]}
+      - {key: mir_candidate_size, type: integer, label: {zh-CN: "MIR 候选数量", en-US: "MIR candidate size"}, default: 16, min: 1, config_path: continual_learning.algorithm.mir_candidate_size, methods: [continual_mir]}
+      - {key: mir_top_k, type: integer, label: {zh-CN: "MIR Top-K", en-US: "MIR top-k"}, default: 8, min: 1, config_path: continual_learning.algorithm.mir_top_k, methods: [continual_mir]}
+      - {key: mir_lora_only, type: boolean, label: {zh-CN: "MIR 仅作用于 LoRA", en-US: "MIR on LoRA only"}, default: true, config_path: continual_learning.algorithm.mir_lora_only, methods: [continual_mir]}
+      - {key: ewc_lambda, type: number, label: {zh-CN: "EWC Lambda", en-US: "EWC lambda"}, default: 1000.0, min: 0, config_path: continual_learning.algorithm.ewc_lambda, methods: [continual_ewc]}
+      - {key: ewc_gamma, type: number, label: {zh-CN: "EWC Gamma", en-US: "EWC gamma"}, default: 1.0, min: 0, max: 1, config_path: continual_learning.algorithm.gamma, methods: [continual_ewc]}
+      - {key: ewc_lora_only, type: boolean, label: {zh-CN: "EWC 仅作用于 LoRA", en-US: "EWC on LoRA only"}, default: true, config_path: continual_learning.algorithm.lora_only, methods: [continual_ewc]}
+      - {key: ewc_fisher_batches, type: integer, label: {zh-CN: "Fisher 估计批次数", en-US: "Fisher estimation batches"}, default: 100, min: 1, config_path: continual_learning.algorithm.fisher_num_batches, methods: [continual_ewc]}
+      - {key: ewc_clip, type: number, label: {zh-CN: "Fisher 裁剪", en-US: "Fisher clip"}, default: 100.0, min: 0, config_path: continual_learning.algorithm.fisher_clip, methods: [continual_ewc]}
+
+  neurovla_pretrain:
+    id: neurovla_pretrain
+    schema_version: 1
+    title: {zh-CN: "NeuroVLA 两阶段训练", en-US: "NeuroVLA two-stage training"}
+    description: {zh-CN: "可只做监督预训练，或在预训练完成后自动进入 R-STDP 微调。", en-US: "Run supervised pre-training only, or continue automatically with R-STDP fine-tuning."}
+    fields:
+      - key: pipeline_mode
+        type: select
+        label: {zh-CN: "训练流程", en-US: "Training pipeline"}
+        default: pretrain_only
+        required: true
+        options:
+          - {value: pretrain_only, label: {zh-CN: "仅预训练", en-US: "Pre-training only"}}
+          - {value: pretrain_then_stdp, label: {zh-CN: "预训练 → R-STDP", en-US: "Pre-training → R-STDP"}}
+      - {key: stdp_alpha, type: number, label: {zh-CN: "STDP Alpha", en-US: "STDP alpha"}, default: 0.8, min: 0, config_path: stdp.alpha, stage: stdp, visible_when: {key: pipeline_mode, equals: pretrain_then_stdp}}
+      - {key: stdp_beta, type: number, label: {zh-CN: "STDP Beta", en-US: "STDP beta"}, default: 0.15, min: 0, config_path: stdp.beta, stage: stdp, visible_when: {key: pipeline_mode, equals: pretrain_then_stdp}}
+      - {key: stdp_learning_rate, type: number, label: {zh-CN: "STDP 学习率", en-US: "STDP learning rate"}, default: 0.00005, min: 0.000000001, config_path: stdp.stdp_lr, stage: stdp, visible_when: {key: pipeline_mode, equals: pretrain_then_stdp}}
+      - {key: stdp_warmup_steps, type: integer, label: {zh-CN: "STDP Warmup 步数", en-US: "STDP warmup steps"}, default: 500, min: 0, config_path: stdp.warmup_steps, stage: stdp, visible_when: {key: pipeline_mode, equals: pretrain_then_stdp}}
+
+  r_stdp:
+    id: r_stdp
+    schema_version: 1
+    title: {zh-CN: "R-STDP 微调", en-US: "R-STDP fine-tuning"}
+    description: {zh-CN: "从已有 NeuroVLA checkpoint 启动混合梯度与奖励调制 STDP 微调。", en-US: "Fine-tune an existing NeuroVLA checkpoint with hybrid gradient and reward-modulated STDP updates."}
+    fields:
+      - {key: alpha, type: number, label: {zh-CN: "梯度损失权重 Alpha", en-US: "Gradient loss weight alpha"}, default: 0.8, min: 0, config_path: stdp.alpha}
+      - {key: beta, type: number, label: {zh-CN: "STDP 损失权重 Beta", en-US: "STDP loss weight beta"}, default: 0.15, min: 0, config_path: stdp.beta}
+      - {key: a_plus, type: number, label: {zh-CN: "A+", en-US: "A+"}, default: 0.003, min: 0, config_path: stdp.A_plus}
+      - {key: a_minus, type: number, label: {zh-CN: "A-", en-US: "A-"}, default: 0.0036, min: 0, config_path: stdp.A_minus}
+      - {key: tau_plus, type: number, label: {zh-CN: "Tau+", en-US: "Tau+"}, default: 20.0, min: 0.000001, config_path: stdp.tau_plus}
+      - {key: tau_minus, type: number, label: {zh-CN: "Tau-", en-US: "Tau-"}, default: 20.0, min: 0.000001, config_path: stdp.tau_minus}
+      - {key: trace_decay, type: number, label: {zh-CN: "Trace Decay", en-US: "Trace decay"}, default: 0.9, min: 0, max: 1, config_path: stdp.trace_decay}
+      - {key: weight_clip, type: number, label: {zh-CN: "权重裁剪", en-US: "Weight clip"}, default: 0.3, min: 0, config_path: stdp.weight_clip}
+      - {key: reward_baseline_momentum, type: number, label: {zh-CN: "奖励基线动量", en-US: "Reward baseline momentum"}, default: 0.95, min: 0, max: 1, config_path: stdp.reward_baseline_momentum}
+      - {key: stdp_lr, type: number, label: {zh-CN: "STDP 学习率", en-US: "STDP learning rate"}, default: 0.00005, min: 0.000000001, config_path: stdp.stdp_lr}
+      - {key: max_update_norm, type: number, label: {zh-CN: "最大更新范数", en-US: "Maximum update norm"}, default: 0.05, min: 0, config_path: stdp.max_update_norm}
+      - {key: warmup_steps, type: integer, label: {zh-CN: "Warmup 步数", en-US: "Warmup steps"}, default: 500, min: 0, config_path: stdp.warmup_steps}
+      - {key: align_with_grad, type: boolean, label: {zh-CN: "与梯度方向对齐", en-US: "Align with gradient"}, default: true, config_path: stdp.align_with_grad}
+      - {key: binarize_pre, type: boolean, label: {zh-CN: "二值化前突触活动", en-US: "Binarize pre-synaptic activity"}, default: true, config_path: stdp.binarize_pre}
+
+  rl_token:
+    id: rl_token
+    schema_version: 1
+    title: {zh-CN: "RL Token 两阶段训练", en-US: "RL Token two-stage training"}
+    description: {zh-CN: "训练或复用 encoder，再进行 RL；GPU 角色是分配后可见设备中的相对编号。", en-US: "Train or reuse an encoder, then run RL; GPU roles are relative indices within the allocated visible devices."}
+    fields:
+      - key: encoder_mode
+        type: select
+        label: {zh-CN: "Encoder 来源", en-US: "Encoder source"}
+        default: train
+        required: true
+        options:
+          - {value: train, label: {zh-CN: "先训练 Encoder", en-US: "Train encoder first"}}
+          - {value: reuse, label: {zh-CN: "复用已有 Encoder", en-US: "Reuse an encoder"}}
+      - {key: encoder_checkpoint, type: path, label: {zh-CN: "Encoder Checkpoint", en-US: "Encoder checkpoint"}, required: true, config_path: ui_pipeline.encoder_checkpoint, visible_when: {key: encoder_mode, equals: reuse}}
+      - key: task_scope
+        type: select
+        label: {zh-CN: "任务范围", en-US: "Task scope"}
+        default: single
+        required: true
+        options:
+          - {value: single, label: {zh-CN: "单任务", en-US: "Single task"}}
+          - {value: subset, label: {zh-CN: "任务子集", en-US: "Task subset"}}
+          - {value: all, label: {zh-CN: "全部任务", en-US: "All tasks"}}
+        config_path: ui_pipeline.task_scope
+      - {key: task_id, type: integer, label: {zh-CN: "任务 ID", en-US: "Task ID"}, default: 0, min: 0, config_path: ui_pipeline.task_id, visible_when: {key: task_scope, equals: single}}
+      - {key: task_ids, type: string, label: {zh-CN: "任务 ID 列表", en-US: "Task IDs"}, description: {zh-CN: "逗号分隔，例如 0,1,3", en-US: "Comma separated, for example 0,1,3"}, required: true, config_path: ui_pipeline.task_ids, visible_when: {key: task_scope, equals: subset}}
+      - {key: rollout_gpu_count, type: integer, label: {zh-CN: "Rollout GPU 数量", en-US: "Rollout GPU count"}, default: 1, min: 1, config_path: ui_pipeline.rollout_gpu_count}
+      - {key: train_gpu_role, type: integer, label: {zh-CN: "训练 GPU 相对编号", en-US: "Training GPU relative index"}, description: {zh-CN: "相对于本任务获分配的 CUDA_VISIBLE_DEVICES，从 0 开始。", en-US: "Zero-based index relative to this job's allocated CUDA_VISIBLE_DEVICES."}, default: 0, min: 0, config_path: ui_pipeline.train_gpu_role}
+      - {key: episodes_per_task, type: integer, label: {zh-CN: "每任务每轮 Episodes", en-US: "Episodes per task per iteration"}, default: 8, min: 1, config_path: ui_pipeline.episodes_per_task}
+      - {key: envs_per_task, type: integer, label: {zh-CN: "每任务环境数", en-US: "Environments per task"}, default: 4, min: 1, config_path: ui_pipeline.envs_per_task}
+      - {key: use_steplock, type: boolean, label: {zh-CN: "启用 Step-lock Rollout", en-US: "Enable step-lock rollout"}, default: true, config_path: ui_pipeline.use_steplock}
+      - {key: buffer_capacity, type: integer, label: {zh-CN: "Replay Buffer 容量", en-US: "Replay buffer capacity"}, default: 100000, min: 1, config_path: ui_pipeline.buffer_capacity, algorithms: [td3]}
+      - {key: buffer_warmup, type: integer, label: {zh-CN: "Buffer Warmup", en-US: "Buffer warmup"}, default: 512, min: 1, config_path: ui_pipeline.buffer_warmup, algorithms: [td3]}
+      - {key: td_batch_size, type: integer, label: {zh-CN: "TD Batch Size", en-US: "TD batch size"}, default: 256, min: 1, config_path: ui_pipeline.td_batch_size, algorithms: [td3]}
+      - {key: tau, type: number, label: {zh-CN: "目标网络 Tau", en-US: "Target-network tau"}, default: 0.005, min: 0, max: 1, config_path: ui_pipeline.tau, algorithms: [td3]}
+      - {key: max_iterations, type: integer, label: {zh-CN: "最大 RL 轮数", en-US: "Maximum RL iterations"}, default: 500, min: 1, config_path: ui_pipeline.max_iterations}
+      - {key: rl_eval_interval, type: integer, label: {zh-CN: "RL 评测间隔", en-US: "RL evaluation interval"}, default: 10, min: 0, config_path: ui_pipeline.eval_interval}
+
+  rl_vla_ppo:
+    id: rl_vla_ppo
+    schema_version: 1
+    title: {zh-CN: "完整 VLA PPO（实验性）", en-US: "Full VLA PPO (experimental)"}
+    description: {zh-CN: "直接更新完整 VLA，显存与稳定性风险较高。", en-US: "Updates the full VLA directly and carries higher memory and stability risk."}
+    fields:
+      - {key: task_id, type: integer, label: {zh-CN: "任务 ID", en-US: "Task ID"}, default: 0, min: 0, config_path: ui_pipeline.task_id}
+      - {key: episodes_per_task, type: integer, label: {zh-CN: "每轮 Episodes", en-US: "Episodes per iteration"}, default: 8, min: 1, config_path: ui_pipeline.episodes_per_task}
+      - {key: envs_per_task, type: integer, label: {zh-CN: "并行环境数", en-US: "Parallel environments"}, default: 4, min: 1, config_path: ui_pipeline.envs_per_task}
+      - {key: max_iterations, type: integer, label: {zh-CN: "最大 PPO 轮数", en-US: "Maximum PPO iterations"}, default: 500, min: 1, config_path: ui_pipeline.max_iterations}
+      - {key: rl_eval_interval, type: integer, label: {zh-CN: "评测间隔", en-US: "Evaluation interval"}, default: 10, min: 0, config_path: ui_pipeline.eval_interval}
+
+  world_model:
+    id: world_model
+    schema_version: 1
+    title: {zh-CN: "World Model 训练", en-US: "World-model training"}
+    description: {zh-CN: "控制视频辅助损失、特征层、融合器和扩散噪声日程。", en-US: "Control video auxiliary loss, feature extraction, fusion, and the diffusion noise schedule."}
+    fields:
+      - {key: use_video_loss, type: boolean, label: {zh-CN: "启用视频损失", en-US: "Enable video loss"}, default: true, config_path: framework.world_model.use_video_loss}
+      - {key: video_loss_weight, type: number, label: {zh-CN: "视频损失权重", en-US: "Video loss weight"}, default: 1.0, min: 0, config_path: framework.world_model.video_loss_weight, visible_when: {key: use_video_loss, equals: true}}
+      - {key: feature_layer_id, type: integer, label: {zh-CN: "特征层 ID", en-US: "Feature layer ID"}, default: 18, min: 0, config_path: framework.world_model.feature_layer_id}
+      - key: fusion_type
+        type: select
+        label: {zh-CN: "融合方式", en-US: "Fusion type"}
+        default: cross_attention
+        options:
+          - {value: cross_attention, label: {zh-CN: "Cross Attention", en-US: "Cross attention"}}
+          - {value: concat, label: {zh-CN: "拼接", en-US: "Concatenation"}}
+        config_path: framework.world_model.fusion_type
+      - {key: num_fusion_layers, type: integer, label: {zh-CN: "融合层数", en-US: "Fusion layers"}, default: 2, min: 1, config_path: framework.world_model.num_fusion_layers}
+      - {key: sigma_min, type: number, label: {zh-CN: "Sigma Min", en-US: "Sigma min"}, default: 0.002, min: 0, config_path: framework.world_model.sigma_min}
+      - {key: sigma_max, type: number, label: {zh-CN: "Sigma Max", en-US: "Sigma max"}, default: 80.0, min: 0, config_path: framework.world_model.sigma_max}
+      - {key: sigma_data, type: number, label: {zh-CN: "Sigma Data", en-US: "Sigma data"}, default: 1.0, min: 0, config_path: framework.world_model.sigma_data}
+      - {key: sigma_conditional, type: number, label: {zh-CN: "条件 Sigma", en-US: "Conditional sigma"}, default: 0.0001, min: 0, config_path: framework.world_model.sigma_conditional}
+      - {key: save_training_state, type: boolean, label: {zh-CN: "保存完整训练状态", en-US: "Save full training state"}, default: false, config_path: trainer.save_training_state}
+      - {key: text_encoder_path, type: path, label: {zh-CN: "文本 Encoder 路径", en-US: "Text encoder path"}, config_path: framework.world_model.text_encoder_path}
+      - {key: pretrained_embeddings_path, type: path, label: {zh-CN: "预计算 Embedding 路径", en-US: "Precomputed embeddings path"}, config_path: datasets.vla_data.pretrained_embeddings_path}
+      - {key: projection_path, type: path, label: {zh-CN: "预计算 Projection 路径", en-US: "Precomputed projection path"}, config_path: framework.world_model.projection_path}
+
+  cotrain:
+    id: cotrain
+    schema_version: 1
+    title: {zh-CN: "VLA + VLM 联合训练（实验性）", en-US: "VLA + VLM co-training (experimental)"}
+    description: {zh-CN: "仅使用仓库已有的 LIBERO 联合训练配置。", en-US: "Uses only the existing repository-backed LIBERO co-training recipe."}
+    fields:
+      - {key: vlm_dataset_use, type: string, label: {zh-CN: "VLM 训练数据集", en-US: "VLM training dataset"}, default: sharegpt4v_coco, required: true, config_path: datasets.vlm_data.dataset_use}
+      - {key: vlm_eval_dataset, type: string, label: {zh-CN: "VLM 验证数据集", en-US: "VLM evaluation dataset"}, default: sharegpt4v_coco, required: true, config_path: datasets.vlm_data.eval_dataset}
+      - {key: vlm_batch_size, type: integer, label: {zh-CN: "VLM 单卡批大小", en-US: "VLM per-device batch size"}, default: 4, min: 1, config_path: datasets.vlm_data.per_device_batch_size}
+      - {key: vla_loss_scale, type: number, label: {zh-CN: "VLA Loss Scale", en-US: "VLA loss scale"}, default: 1.0, min: 0, config_path: trainer.loss_scale.vla}
+      - {key: vlm_loss_scale, type: number, label: {zh-CN: "VLM Loss Scale", en-US: "VLM loss scale"}, default: 0.1, min: 0, config_path: trainer.loss_scale.vlm}
+
+  vlm_only:
+    id: vlm_only
+    schema_version: 1
+    title: {zh-CN: "仅 VLM 训练（实验性）", en-US: "VLM-only training (experimental)"}
+    description: {zh-CN: "使用仓库已有 VLM dataloader 和训练入口，不训练动作头。", en-US: "Uses the existing VLM dataloader and trainer without action-head training."}
+    fields:
+      - {key: vlm_dataset_use, type: string, label: {zh-CN: "VLM 训练数据集", en-US: "VLM training dataset"}, default: sharegpt4v_coco, required: true, config_path: datasets.vlm_data.dataset_use}
+      - {key: vlm_eval_dataset, type: string, label: {zh-CN: "VLM 验证数据集", en-US: "VLM evaluation dataset"}, default: sharegpt4v_coco, required: true, config_path: datasets.vlm_data.eval_dataset}
+      - {key: vlm_batch_size, type: integer, label: {zh-CN: "VLM 单卡批大小", en-US: "VLM per-device batch size"}, default: 4, min: 1, config_path: datasets.vlm_data.per_device_batch_size}
+      - {key: vlm_loss_scale, type: number, label: {zh-CN: "VLM Loss Scale", en-US: "VLM loss scale"}, default: 1.0, min: 0, config_path: trainer.loss_scale.vlm}
+
+# Deployment is deliberately declared separately from training combinations.
+# A training recipe is not deployable merely because it can produce a
+# checkpoint: it must be connected to one of the model-server adapters below.
+deployment_adapters:
+  - id: base_framework_websocket
+    status: verified
+    label: {zh-CN: "AlphaBrain WebSocket 模型服务", en-US: "AlphaBrain WebSocket model server"}
+    description: {zh-CN: "通过 BaseFramework.from_pretrained 加载自包含目录或旧式单文件 checkpoint。", en-US: "Loads a self-contained directory or legacy single-file checkpoint through BaseFramework.from_pretrained."}
+    entrypoint: deployment/model_server/server_policy.py
+    protocol:
+      transport: websocket
+      request_format: alphabrain_policy_v1
+      metadata: {env: simpler_env}
+    checkpoint_kinds: [self_contained, legacy_file]
+    startup_timeout_seconds: 900
+    parameter_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        port: {type: integer, minimum: 1024, maximum: 65535, default: 10093, title: {zh-CN: "服务端口", en-US: "Service port"}}
+        idle_timeout_seconds: {type: integer, minimum: -1, default: 1800, title: {zh-CN: "空闲停止时间（秒）", en-US: "Idle timeout (seconds)"}}
+        precision: {type: string, enum: [bf16, fp32], default: bf16, title: {zh-CN: "推理精度", en-US: "Inference precision"}}
+        base_vlm_path:
+          type: string
+          format: local-directory
+          title: {zh-CN: "基础 VLM 本地目录（可选）", en-US: "Local base VLM directory (optional)"}
+          description: {zh-CN: "覆盖 checkpoint 配置中的基础 VLM 路径；离线 NeuroVLA bundle 可留空自动解析。", en-US: "Overrides the base VLM path in the checkpoint; offline NeuroVLA bundles can leave this empty for automatic resolution."}
+        attention_backend:
+          type: string
+          enum: [auto, sdpa, flash_attention_2, eager]
+          title: {zh-CN: "Attention 后端", en-US: "Attention backend"}
+          description: {zh-CN: "auto 会在 flash-attn 不可用时回退到 SDPA。", en-US: "auto falls back to SDPA when flash-attn is unavailable."}
+
+  - id: lerobot_pi05_websocket
+    status: verified
+    label: {zh-CN: "LeRobot Pi0.5 WebSocket 模型服务", en-US: "LeRobot Pi0.5 WebSocket model server"}
+    description: {zh-CN: "原生加载 LeRobot 0.6.0 的 Pi0.5 config、processors 与严格匹配权重，不经 AlphaBrain BaseFramework 转换。", en-US: "Natively loads LeRobot 0.6.0 Pi0.5 config, processors, and strict-matched weights without converting through AlphaBrain BaseFramework."}
+    entrypoint: deployment/model_server/server_policy_lerobot_pi05.py
+    protocol:
+      transport: websocket
+      request_format: alphabrain_policy_v1
+      metadata: {model: Pi0.5, checkpoint_format: lerobot}
+    checkpoint_kinds: [lerobot_pi05]
+    startup_timeout_seconds: 1200
+    parameter_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        port: {type: integer, minimum: 1024, maximum: 65535, default: 10093, title: {zh-CN: "服务端口", en-US: "Service port"}}
+        idle_timeout_seconds: {type: integer, minimum: -1, default: 1800, title: {zh-CN: "空闲停止时间（秒）", en-US: "Idle timeout (seconds)"}}
+
+  - id: cosmos_policy_websocket
+    status: verified
+    label: {zh-CN: "Cosmos Policy WebSocket 模型服务", en-US: "Cosmos Policy WebSocket model server"}
+    description: {zh-CN: "加载 Cosmos Policy DiT、T5 embeddings、LIBERO 统计以及本地 Cosmos Predict2 基础模型。", en-US: "Loads the Cosmos Policy DiT, T5 embeddings, LIBERO statistics, and a local Cosmos Predict2 base model."}
+    entrypoint: deployment/model_server/server_policy_cosmos.py
+    protocol:
+      transport: websocket
+      request_format: alphabrain_policy_v1
+      metadata: {env: libero, model: CosmosPolicy}
+    checkpoint_kinds: [cosmos_policy]
+    startup_timeout_seconds: 900
+    parameter_schema:
+      type: object
+      additionalProperties: false
+      required: [pretrained_dir]
+      properties:
+        pretrained_dir: {type: string, minLength: 1, format: local-directory, title: {zh-CN: "Cosmos Predict2 基础模型目录", en-US: "Cosmos Predict2 base-model directory"}}
+        port: {type: integer, minimum: 1024, maximum: 65535, default: 10093, title: {zh-CN: "服务端口", en-US: "Service port"}}
+        idle_timeout_seconds: {type: integer, minimum: -1, default: 1800, title: {zh-CN: "空闲停止时间（秒）", en-US: "Idle timeout (seconds)"}}
+
+deployment_combinations:
+  # Base VLA recipes with an existing server/evaluation path.
+  - id: deploy_qwen2_5_oft
+    status: verified
+    backbone: qwen2_5_vl
+    action_head: mlp_regression
+    adapter: base_framework_websocket
+    framework_names: [QwenOFT]
+    source_combinations: [qwen_oft_libero]
+    benchmarks: [libero]
+    recommended_gpu_count: 1
+  - id: deploy_qwen3_oft
+    status: verified
+    backbone: qwen3_vl
+    action_head: mlp_regression
+    adapter: base_framework_websocket
+    framework_names: [QwenOFT]
+    source_combinations: [qwen3_oft_libero, qwen_oft_robocasa]
+    benchmarks: [libero, robocasa]
+    recommended_gpu_count: 1
+  - id: deploy_paligemma_oft
+    status: verified
+    backbone: paligemma
+    action_head: mlp_regression
+    adapter: base_framework_websocket
+    framework_names: [PaliGemmaOFT]
+    source_combinations: [paligemma_oft_libero]
+    benchmarks: [libero]
+    recommended_gpu_count: 2
+  - id: deploy_paligemma_pi05
+    status: verified
+    backbone: paligemma
+    action_head: pi05_action_expert
+    adapter: base_framework_websocket
+    framework_names: [PaliGemmaPi05]
+    source_combinations: [paligemma_pi05_libero]
+    benchmarks: [libero]
+    recommended_gpu_count: 4
+    label: {zh-CN: "Pi0.5 · AlphaBrain BaseFramework 格式", en-US: "Pi0.5 · AlphaBrain BaseFramework format"}
+    checkpoint_format: alphabrain
+  - id: deploy_lerobot_pi05
+    status: verified
+    label: {zh-CN: "Pi0.5 · LeRobot 格式", en-US: "Pi0.5 · LeRobot format"}
+    description: {zh-CN: "LeRobot 0.6.0 原生 Pi0.5 checkpoint；需要三路相机、7 维 state 与任务语言。", en-US: "Native LeRobot 0.6.0 Pi0.5 checkpoint requiring three cameras, 7-D state, and task language."}
+    backbone: paligemma
+    action_head: pi05_action_expert
+    adapter: lerobot_pi05_websocket
+    framework_names: [LeRobotPI05]
+    source_combinations: [paligemma_pi05_libero]
+    benchmarks: []
+    recommended_gpu_count: 1
+    checkpoint_format: lerobot
+  - id: deploy_llama_oft
+    status: verified
+    backbone: llama3_2_vision
+    action_head: mlp_regression
+    adapter: base_framework_websocket
+    framework_names: [LlamaOFT]
+    source_combinations: [llama_oft_libero]
+    benchmarks: [libero]
+    recommended_gpu_count: 4
+  - id: deploy_neurovla
+    status: verified
+    backbone: qwen2_5_vl
+    action_head: snn
+    adapter: base_framework_websocket
+    framework_names: [NeuroVLA]
+    source_combinations: [neurovla_pretrain, neurovla_rstdp]
+    benchmarks: [libero]
+    recommended_gpu_count: 1
+  - id: deploy_qwen2_5_gr00t
+    status: verified
+    backbone: qwen2_5_vl
+    action_head: flow_matching_dit
+    adapter: base_framework_websocket
+    framework_names: [QwenGR00T]
+    source_combinations: [qwen_gr00t_libero]
+    benchmarks: [libero]
+    recommended_gpu_count: 2
+  - id: deploy_qwen3_gr00t
+    status: verified
+    backbone: qwen3_vl
+    action_head: flow_matching_dit
+    adapter: base_framework_websocket
+    framework_names: [QwenGR00T]
+    source_combinations: [qwen_gr00t_robocasa365]
+    benchmarks: [robocasa365]
+    recommended_gpu_count: 2
+
+  # World-model backbones use the same BaseFramework WebSocket server.
+  - id: deploy_world_model_cosmos2
+    status: verified
+    backbone: cosmos2
+    action_head: flow_matching_dit
+    adapter: base_framework_websocket
+    framework_names: [WorldModelVLA, QwenGR00T]
+    world_model_backends: [cosmos2, cosmos2-diffusers]
+    source_combinations: [wm_cosmos2]
+    benchmarks: [libero]
+    recommended_gpu_count: 4
+  - id: deploy_world_model_cosmos2_5
+    status: verified
+    backbone: cosmos2_5
+    action_head: flow_matching_dit
+    adapter: base_framework_websocket
+    framework_names: [WorldModelVLA, QwenGR00T]
+    world_model_backends: [cosmos2.5, cosmos2_5, cosmos2-diffusers]
+    source_combinations: [wm_cosmos2_5]
+    benchmarks: [libero]
+    recommended_gpu_count: 4
+  - id: deploy_world_model_vjepa2
+    status: verified
+    backbone: vjepa2
+    action_head: flow_matching_dit
+    adapter: base_framework_websocket
+    framework_names: [WorldModelVLA, QwenGR00T]
+    world_model_backends: [vjepa2]
+    source_combinations: [wm_vjepa2]
+    benchmarks: [libero]
+    recommended_gpu_count: 4
+  - id: deploy_world_model_wan2_2
+    status: verified
+    backbone: wan2_2
+    action_head: flow_matching_dit
+    adapter: base_framework_websocket
+    framework_names: [WorldModelVLA, QwenGR00T]
+    world_model_backends: [wan2.2, wan2_2]
+    source_combinations: [wm_wan2_2]
+    benchmarks: [libero]
+    recommended_gpu_count: 4
+
+  # Cosmos Policy has a purpose-built loader and client path.
+  - id: deploy_cosmos_policy
+    status: verified
+    backbone: cosmos2
+    action_head: cosmos_policy_dit
+    adapter: cosmos_policy_websocket
+    framework_names: [CosmosPolicy]
+    source_combinations: [cosmos_policy]
+    benchmarks: [libero]
+    recommended_gpu_count: 1
+
+combinations:
+  # Baseline VLA and debug recipes.
+  - id: qwen_oft_libero
+    status: verified
+    backbone: qwen2_5_vl
+    action_head: mlp_regression
+    method: imitation_learning
+    datasets: [libero]
+    launcher: unified_finetune
+    default_mode: qwen_oft_5traj
+    modes: [qwen_oft_5traj]
+    model_config: configs/models/qwen_oft.yaml
+    workflow: standard
+    min_gpus: 1
+  - id: qwen3_oft_libero
+    status: verified
+    backbone: qwen3_vl
+    action_head: mlp_regression
+    method: imitation_learning
+    datasets: [libero]
+    launcher: unified_finetune
+    default_mode: qwen_oft
+    modes: [qwen_oft]
+    model_config: configs/models/qwen_oft.yaml
+    workflow: standard
+    min_gpus: 1
+  - id: qwen_oft_robocasa
+    status: verified
+    backbone: qwen3_vl
+    action_head: mlp_regression
+    method: imitation_learning
+    datasets: [robocasa]
+    launcher: unified_finetune
+    default_mode: qwen_oft_robocasa_tabletop
+    modes: [qwen_oft_robocasa_tabletop]
+    model_config: configs/models/qwen_oft.yaml
+    workflow: standard
+    min_gpus: 1
+  - id: paligemma_oft_libero
+    status: verified
+    backbone: paligemma
+    action_head: mlp_regression
+    method: imitation_learning
+    datasets: [libero]
+    launcher: unified_finetune
+    default_mode: paligemma_oft_goal
+    modes: [paligemma_oft_goal, paligemma_oft_spatial, paligemma_oft_object, paligemma_oft_long, paligemma_oft_long_bs128_v2, paligemma_oft_all_150k]
+    model_config: configs/models/paligemma_oft.yaml
+    workflow: standard
+    min_gpus: 2
+  - id: llama_oft_libero
+    status: verified
+    backbone: llama3_2_vision
+    action_head: mlp_regression
+    method: imitation_learning
+    datasets: [libero]
+    launcher: unified_finetune
+    default_mode: llama_oft_goal
+    modes: [llama_oft_goal, llama_oft_spatial, llama_oft_object, llama_oft_long, llama_oft_all_150k]
+    model_config: configs/models/llama_oft.yaml
+    workflow: standard
+    min_gpus: 4
+  - id: paligemma_pi05_libero
+    status: verified
+    backbone: paligemma
+    action_head: pi05_action_expert
+    method: imitation_learning
+    datasets: [libero, libero_paligemma]
+    launcher: unified_finetune
+    default_mode: paligemma_pi05_openpi_aligned_v3
+    modes: [paligemma_pi05_openpi_aligned_v3]
+    model_config: configs/models/paligemma_pi05.yaml
+    workflow: standard
+    min_gpus: 4
+  - id: qwen_gr00t_libero
+    status: verified
+    backbone: qwen2_5_vl
+    action_head: flow_matching_dit
+    method: imitation_learning
+    datasets: [libero]
+    launcher: unified_finetune
+    default_mode: qwen_gr00t
+    modes: [qwen_gr00t]
+    model_config: configs/models/qwen_gr00t.yaml
+    workflow: standard
+    min_gpus: 2
+  - id: qwen_gr00t_robocasa365
+    status: verified
+    backbone: qwen3_vl
+    action_head: flow_matching_dit
+    method: imitation_learning
+    datasets: [robocasa365]
+    launcher: unified_finetune
+    default_mode: robocasa365_train
+    modes: [robocasa365_train]
+    model_config: configs/models/qwen_gr00t.yaml
+    workflow: standard
+    min_gpus: 2
+  - id: toy_libero_debug
+    availability: demo_only
+    status: verified
+    backbone: toy
+    action_head: mlp_regression
+    method: imitation_learning
+    datasets: [libero]
+    launcher: resolved_config
+    model_config: configs/models/toy_model.yaml
+    dataset_config: configs/datasets/libero.yaml
+    workflow: standard
+    min_gpus: 1
+
+  # Brain-inspired training.
+  - id: neurovla_pretrain
+    status: verified
+    backbone: qwen2_5_vl
+    action_head: snn
+    method: imitation_learning
+    datasets: [libero]
+    launcher: neuro_pretrain
+    default_mode: neuro_vla
+    modes: [neuro_vla]
+    model_config: configs/models/neurovla.yaml
+    workflow: neurovla_pretrain
+    min_gpus: 1
+  - id: neurovla_rstdp
+    status: verified
+    backbone: qwen2_5_vl
+    action_head: snn
+    method: r_stdp
+    datasets: [libero]
+    launcher: neuro_stdp
+    default_mode: neuro_vla_stdp
+    modes: [neuro_vla_stdp]
+    model_config: configs/models/neurovla.yaml
+    workflow: r_stdp
+    min_gpus: 1
+
+  # Continual learning; EWC is visible only in experimental mode because the
+  # current three-axis launcher exposes ER/MIR only.
+  - &cl_qwen_er
+    id: cl_qwen_er
+    status: verified
+    backbone: qwen2_5_vl
+    action_head: flow_matching_dit
+    method: continual_er
+    datasets: [libero]
+    dataset_mixes: [libero_goal, libero_long, libero_10]
+    launcher: continual_learning
+    cl_model: qwengr00t
+    config_paths: [configs/continual_learning/cl_base.yaml, configs/continual_learning/models/qwengr00t.yaml]
+    workflow: continual_learning
+    min_gpus: 1
+  - <<: *cl_qwen_er
+    id: cl_qwen_mir
+    method: continual_mir
+  - &cl_neuro_er
+    id: cl_neuro_er
+    status: verified
+    backbone: qwen2_5_vl
+    action_head: snn
+    method: continual_er
+    datasets: [libero]
+    dataset_mixes: [libero_goal, libero_long, libero_10]
+    launcher: continual_learning
+    cl_model: neurovla
+    config_paths: [configs/continual_learning/cl_base.yaml, configs/continual_learning/models/neurovla.yaml]
+    workflow: continual_learning
+    min_gpus: 1
+  - <<: *cl_neuro_er
+    id: cl_neuro_mir
+    method: continual_mir
+  - &cl_llama_er
+    id: cl_llama_er
+    status: verified
+    backbone: llama3_2_vision
+    action_head: mlp_regression
+    method: continual_er
+    datasets: [libero]
+    dataset_mixes: [libero_goal, libero_long, libero_10]
+    launcher: continual_learning
+    cl_model: llamaoft
+    config_paths: [configs/continual_learning/cl_base.yaml, configs/continual_learning/models/llamaoft.yaml]
+    workflow: continual_learning
+    min_gpus: 1
+  - <<: *cl_llama_er
+    id: cl_llama_mir
+    method: continual_mir
+  - &cl_paligemma_er
+    id: cl_paligemma_er
+    status: verified
+    backbone: paligemma
+    action_head: pi05_action_expert
+    method: continual_er
+    datasets: [libero, libero_paligemma]
+    dataset_mixes: [libero_goal, libero_long, libero_10]
+    launcher: continual_learning
+    cl_model: paligemma
+    config_paths: [configs/continual_learning/cl_base.yaml, configs/continual_learning/models/paligemma.yaml]
+    workflow: continual_learning
+    min_gpus: 1
+  - <<: *cl_paligemma_er
+    id: cl_paligemma_mir
+    method: continual_mir
+  - <<: *cl_qwen_er
+    id: cl_qwen_ewc
+    status: experimental
+    method: continual_ewc
+    risk: {zh-CN: "当前三轴启动器尚未暴露 EWC，需要研究人员补充配置/代码。", en-US: "The current three-axis launcher does not expose EWC; researcher changes are required."}
+  - <<: *cl_neuro_er
+    id: cl_neuro_ewc
+    status: experimental
+    method: continual_ewc
+
+  # World-model visual backbones.
+  - id: wm_cosmos2
+    status: verified
+    backbone: cosmos2
+    action_head: flow_matching_dit
+    method: imitation_learning
+    datasets: [libero]
+    launcher: world_model
+    world_model_key: cos2
+    config_paths: [configs/models/config_cos2.yaml]
+    workflow: world_model
+    min_gpus: 4
+  - id: wm_cosmos2_5
+    status: verified
+    backbone: cosmos2_5
+    action_head: flow_matching_dit
+    method: imitation_learning
+    datasets: [libero]
+    launcher: world_model
+    world_model_key: cos25_4gpu
+    config_paths: [configs/models/config_cos25_4gpu.yaml]
+    workflow: world_model
+    min_gpus: 4
+  - id: wm_vjepa2
+    status: verified
+    backbone: vjepa2
+    action_head: flow_matching_dit
+    method: imitation_learning
+    datasets: [libero]
+    launcher: world_model
+    world_model_key: vjepa
+    config_paths: [configs/models/config_vjepa.yaml]
+    workflow: world_model
+    min_gpus: 4
+  - id: wm_wan2_2
+    status: verified
+    backbone: wan2_2
+    action_head: flow_matching_dit
+    method: imitation_learning
+    datasets: [libero]
+    launcher: world_model
+    world_model_key: wan22
+    config_paths: [configs/models/config_wan22.yaml]
+    workflow: world_model
+    min_gpus: 4
+  - id: cosmos_policy
+    status: verified
+    backbone: cosmos2
+    action_head: cosmos_policy_dit
+    method: imitation_learning
+    datasets: [libero]
+    launcher: cosmos_policy
+    default_mode: cosmos_policy
+    modes: [cosmos_policy]
+    config_paths: [configs/models/cosmos_policy.yaml]
+    workflow: standard
+    min_gpus: 1
+
+  # RL Token pipelines.  Each launcher records stage dependencies in its
+  # training-method component; an existing encoder checkpoint may skip stage 1.
+  - &rl_qwen_rlt
+    id: rl_qwen_rlt_td3
+    status: verified
+    backbone: qwen2_5_vl
+    action_head: mlp_regression
+    method: rlt_td3
+    datasets: [libero]
+    launcher: rl_token
+    track: rlt
+    rl_algorithm: td3
+    workflow: rl_token
+    min_gpus: 1
+  - <<: *rl_qwen_rlt
+    id: rl_qwen_rlt_a_td3
+    method: rlt_a_td3
+    track: rlt_a
+  - <<: *rl_qwen_rlt
+    id: rl_qwen_rlt_a_ppo
+    status: unsupported
+    method: rlt_a_ppo
+    track: rlt_a
+    rl_algorithm: ppo
+  - <<: *rl_qwen_rlt
+    id: rl_qwen_rlt_a_grpo
+    status: experimental
+    method: rlt_a_grpo
+    track: rlt_a
+    rl_algorithm: grpo
+  - <<: *rl_qwen_rlt
+    id: rl_qwen_vanilla_ppo
+    status: experimental
+    method: vanilla_vla_ppo
+    launcher: vanilla_vla_ppo
+    rl_algorithm: ppo
+    workflow: rl_vla_ppo
+  - id: rl_pi05_rlt_td3
+    status: verified
+    backbone: paligemma
+    action_head: pi05_action_expert
+    method: rlt_td3
+    datasets: [libero, libero_paligemma]
+    launcher: rl_token
+    track: rlt
+    rl_algorithm: td3
+    workflow: rl_token
+    min_gpus: 1
+  - id: rl_pi05_rlt_a
+    status: unsupported
+    backbone: paligemma
+    action_head: pi05_action_expert
+    method: rlt_a_td3
+    datasets: [libero, libero_paligemma]
+    launcher: none
+    reason: {zh-CN: "PaliGemmaPi05 尚无 RLT_a 所需的 get_vla_action 接口。", en-US: "PaliGemmaPi05 does not expose the get_vla_action interface required by RLT_a."}
+
+  # Existing legacy recipes are exposed only after experimental opt-in.
+  - id: qwen_oft_arx
+    status: experimental
+    backbone: qwen2_5_vl
+    action_head: mlp_regression
+    method: imitation_learning
+    datasets: [arx]
+    launcher: resolved_config
+    model_config: configs/models/qwen_oft.yaml
+    dataset_config: configs/datasets/arx.yaml
+    workflow: standard
+    min_gpus: 1
+  - id: qwen_oft_robotwin
+    status: unsupported
+    backbone: qwen2_5_vl
+    action_head: mlp_regression
+    method: imitation_learning
+    datasets: [robotwin]
+    launcher: resolved_config
+    model_config: configs/models/qwen_oft.yaml
+    dataset_config: configs/datasets/robotwin.yaml
+    workflow: standard
+    min_gpus: 1
+    reason: {zh-CN: "仓库尚未提供经过验证的 RoboTwin 端到端训练链路。", en-US: "The repository does not yet provide a verified end-to-end RoboTwin training chain."}
+  - id: qwen_fm_oxe
+    status: experimental
+    backbone: qwen2_5_vl
+    action_head: flow_matching_dit
+    method: imitation_learning
+    datasets: [oxe]
+    launcher: resolved_config
+    model_config: configs/models/qwen_fm.yaml
+    dataset_config: configs/datasets/oxe.yaml
+    workflow: standard
+    min_gpus: 1
+  - id: qwen_pi_calvin
+    status: unsupported
+    backbone: qwen2_5_vl
+    action_head: flow_matching_dit
+    method: imitation_learning
+    datasets: [calvin]
+    launcher: resolved_config
+    model_config: configs/models/qwen_pi.yaml
+    dataset_config: configs/datasets/calvin.yaml
+    workflow: standard
+    min_gpus: 1
+    reason: {zh-CN: "仓库尚未提供经过验证的 CALVIN 端到端训练链路。", en-US: "The repository does not yet provide a verified end-to-end CALVIN training chain."}
+  - id: llama_pi05_libero
+    status: experimental
+    backbone: llama3_2_vision
+    action_head: pi05_action_expert
+    method: imitation_learning
+    datasets: [libero]
+    launcher: resolved_config
+    model_config: configs/models/llama_pi05.yaml
+    dataset_config: configs/datasets/libero_paligemma.yaml
+    workflow: standard
+    min_gpus: 4
+    risk: {zh-CN: "模型配置存在，但统一 finetune 模式尚未提供已验证配方。", en-US: "The model config exists, but the unified finetune catalog has no verified recipe."}
+  - id: qwen_adapter_libero
+    status: experimental
+    backbone: qwen2_5_vl
+    action_head: vla_adapter
+    method: imitation_learning
+    datasets: [libero]
+    launcher: resolved_config
+    model_config: configs/models/qwen_adapter.yaml
+    dataset_config: configs/datasets/libero.yaml
+    workflow: standard
+    min_gpus: 1
+    risk: {zh-CN: "配置存在，但当前框架注册表没有完整的 QwenAdapter 训练接线。", en-US: "A config exists, but QwenAdapter is not fully wired in the framework registry."}
+
+  # Existing repository entrypoints for mixed VLA/VLM and VLM-only training.
+  - id: qwen_gr00t_cotrain_libero
+    status: experimental
+    backbone: qwen2_5_vl
+    action_head: flow_matching_dit
+    method: cotrain
+    datasets: [libero]
+    launcher: cotrain
+    config_paths: [benchmarks/LIBERO/train/alphabrain_cotrain_libero.yaml]
+    workflow: cotrain
+    min_gpus: 1
+    risk: {zh-CN: "该入口存在但尚未形成完整公开配方；请先用小规模数据验证。", en-US: "The entrypoint exists but is not yet a fully validated public recipe; validate it on a small run first."}
+  - id: qwen_gr00t_vlm_only_libero
+    status: experimental
+    backbone: qwen2_5_vl
+    action_head: flow_matching_dit
+    method: vlm_only
+    datasets: [libero]
+    launcher: vlm_only
+    config_paths: [benchmarks/LIBERO/train/alphabrain_cotrain_libero.yaml]
+    workflow: vlm_only
+    min_gpus: 1
+    risk: {zh-CN: "仅接通仓库现有 VLM trainer；动作头不会被训练。", en-US: "Only the existing VLM trainer is wired; the action head is not trained."}

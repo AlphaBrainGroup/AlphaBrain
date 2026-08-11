@@ -21,7 +21,9 @@
 set -euo pipefail
 cd "${ALPHABRAIN_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 
-[ -f .env ] && { set -a; source .env; set +a; }
+if [ "${ALPHABRAIN_UI_LAUNCH:-0}" != "1" ] && [ -f .env ]; then
+    set -a; source .env; set +a
+fi
 export PYTHONPATH="${PWD}${PYTHONPATH:+:${PYTHONPATH}}"
 
 export LIBERO_PYTHON="${LIBERO_PYTHON:-/path/to/envs/libero/bin/python}"
@@ -33,6 +35,10 @@ GPU_ID=${1:-0}
 TRACK=${TRACK:-rlt}
 SEED=${SEED:-42}
 CKPT_PATH="${CKPT_PATH:-results/training/QwenOFT-5traj-libero_goal/final_model}"
+PYTHON_CMD=(python)
+if [ "${ALPHABRAIN_UI_LAUNCH:-0}" != "1" ]; then
+    PYTHON_CMD=(env "CUDA_VISIBLE_DEVICES=${GPU_ID}" python)
+fi
 
 TIMESTAMP=$(date +%m%d_%H%M)
 
@@ -47,7 +53,7 @@ case "${TRACK}" in
         # cross-attention. Demo-driven via --demo_config (from the SFT ckpt's
         # own framework_config.yaml) if present; otherwise random rollouts.
         RUN_TAG="${RUN_TAG:-rlt_$(basename ${CKPT_PATH%/*})}"
-        OUTPUT_DIR="results/rlt_training/${RUN_TAG}_${TIMESTAMP}/pretrain"
+        OUTPUT_DIR="${OUTPUT_DIR:-results/rlt_training/${RUN_TAG}_${TIMESTAMP}/pretrain}"
         MAX_STEPS=${MAX_STEPS:-30000}
         EPOCHS=${EPOCHS:-10000}
         BATCH_SIZE=${BATCH_SIZE:-8}
@@ -64,7 +70,7 @@ case "${TRACK}" in
         echo "   output:  ${OUTPUT_DIR}"
         echo "============================================================"
 
-        CUDA_VISIBLE_DEVICES=${GPU_ID} python AlphaBrain/training/reinforcement_learning/trainers/train.py \
+        "${PYTHON_CMD[@]}" AlphaBrain/training/reinforcement_learning/trainers/train.py \
             --phase pretrain_rlt \
             --ckpt_path "${CKPT_PATH}" \
             --output_dir "${OUTPUT_DIR}" \
@@ -91,7 +97,7 @@ case "${TRACK}" in
         # Action-token track: pretrain on action-query slice, D=256 bottleneck,
         # encoder_heads=4. Observations from random rollout (the original recipe).
         RUN_TAG="${RUN_TAG:-rlt_a_$(basename ${CKPT_PATH%/*})}"
-        OUTPUT_DIR="results/rlt_training/${RUN_TAG}_${TIMESTAMP}/pretrain"
+        OUTPUT_DIR="${OUTPUT_DIR:-results/rlt_training/${RUN_TAG}_${TIMESTAMP}/pretrain}"
         EPOCHS=${EPOCHS:-500}
         BATCH_SIZE=${BATCH_SIZE:-32}
         LR=${LR:-1e-4}
@@ -103,7 +109,7 @@ case "${TRACK}" in
         echo "   output:  ${OUTPUT_DIR}"
         echo "============================================================"
 
-        CUDA_VISIBLE_DEVICES=${GPU_ID} python AlphaBrain/training/reinforcement_learning/trainers/train.py \
+        "${PYTHON_CMD[@]}" AlphaBrain/training/reinforcement_learning/trainers/train.py \
             --phase pretrain \
             --ckpt_path "${CKPT_PATH}" \
             --output_dir "${OUTPUT_DIR}" \

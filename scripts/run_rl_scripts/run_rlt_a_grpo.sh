@@ -28,7 +28,9 @@
 set -euo pipefail
 cd "${ALPHABRAIN_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 
-[ -f .env ] && { set -a; source .env; set +a; }
+if [ "${ALPHABRAIN_UI_LAUNCH:-0}" != "1" ] && [ -f .env ]; then
+    set -a; source .env; set +a
+fi
 export PYTHONPATH="${PWD}${PYTHONPATH:+:${PYTHONPATH}}"
 
 export LIBERO_PYTHON="${LIBERO_PYTHON:-/path/to/envs/libero/bin/python}"
@@ -39,6 +41,8 @@ export MUJOCO_GL="${MUJOCO_GL:-egl}"
 GPU_ID=${1:-0}
 TASK_ID=${TASK_ID:-0}
 MULTI_TASK=${MULTI_TASK:-0}
+TASK_SCOPE=${TASK_SCOPE:-}
+TASK_IDS=${TASK_IDS:-}
 GRPO_EPOCHS=${GRPO_EPOCHS:-4}
 GRPO_KL_COEF=${GRPO_KL_COEF:-0.04}
 REF_UPDATE_INTERVAL=${REF_UPDATE_INTERVAL:-0}
@@ -64,18 +68,25 @@ if [ -z "${ENCODER_PATH}" ] || [ ! -f "${ENCODER_PATH}" ]; then
     exit 1
 fi
 
-if [ "${MULTI_TASK}" = "1" ]; then
-    TASK_FLAG="--all_tasks"; RUN_TAG="rlt_a_grpo_qwen_alltasks"
-else
-    TASK_FLAG="--task_id ${TASK_ID}"; RUN_TAG="rlt_a_grpo_qwen_t${TASK_ID}"
-fi
+if [ -z "${TASK_SCOPE}" ]; then [ "${MULTI_TASK}" = "1" ] && TASK_SCOPE=all || TASK_SCOPE=single; fi
+case "${TASK_SCOPE}" in
+    all) TASK_ARGS=(--all_tasks); TASK_LABEL="all tasks"; RUN_TAG="rlt_a_grpo_qwen_alltasks" ;;
+    subset)
+        [ -n "${TASK_IDS}" ] || { echo "ERROR: TASK_IDS is required when TASK_SCOPE=subset" >&2; exit 1; }
+        TASK_ARGS=(--task_ids "${TASK_IDS}"); TASK_LABEL="tasks ${TASK_IDS}"; RUN_TAG="rlt_a_grpo_qwen_subset"
+        ;;
+    single) TASK_ARGS=(--task_id "${TASK_ID}"); TASK_LABEL="task ${TASK_ID}"; RUN_TAG="rlt_a_grpo_qwen_t${TASK_ID}" ;;
+    *) echo "ERROR: TASK_SCOPE must be single, subset, or all" >&2; exit 1 ;;
+esac
+PYTHON_CMD=(python)
+if [ "${ALPHABRAIN_UI_LAUNCH:-0}" != "1" ]; then PYTHON_CMD=(env "CUDA_VISIBLE_DEVICES=${GPU_ID}" python); fi
 TIMESTAMP=$(date +%m%d_%H%M)
-OUTPUT_DIR="results/rlt_training/${RUN_TAG}_${TIMESTAMP}/rl_grpo"
+OUTPUT_DIR="${OUTPUT_DIR:-results/rlt_training/${RUN_TAG}_${TIMESTAMP}/rl_grpo}"
 mkdir -p "${OUTPUT_DIR}"
 TRAIN_LOG="${OUTPUT_DIR}/train.log"
 
 echo "============================================================"
-echo " RLT_a Phase-2 GRPO (Qwen, ${TASK_FLAG})"
+echo " RLT_a Phase-2 GRPO (Qwen, ${TASK_LABEL})"
 echo "   GPU:          ${GPU_ID}"
 echo "   ckpt:         ${CKPT_PATH}"
 echo "   encoder:      ${ENCODER_PATH}"
@@ -85,13 +96,11 @@ echo "   ref_update:   every ${REF_UPDATE_INTERVAL} iter (0=never)"
 echo "   output:       ${OUTPUT_DIR}"
 echo "============================================================"
 
-export CUDA_VISIBLE_DEVICES=${GPU_ID}
-
-python -u AlphaBrain/training/reinforcement_learning/trainers/train.py \
+"${PYTHON_CMD[@]}" -u AlphaBrain/training/reinforcement_learning/trainers/train.py \
     --phase grpo --encoder_mode action_token \
     --ckpt_path ${CKPT_PATH} --encoder_path ${ENCODER_PATH} \
     --output_dir ${OUTPUT_DIR} \
-    --suite libero_goal ${TASK_FLAG} \
+    --suite "${SUITE:-libero_goal}" "${TASK_ARGS[@]}" \
     --bottleneck_dim 256 --encoder_layers 2 --encoder_heads 4 \
     --actor_hidden_dim 512 --critic_hidden_dim 512 \
     --ref_dropout 0.5 --fixed_std 0.1 \

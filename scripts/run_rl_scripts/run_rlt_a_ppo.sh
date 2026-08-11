@@ -26,7 +26,9 @@
 set -euo pipefail
 cd "${ALPHABRAIN_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 
-[ -f .env ] && { set -a; source .env; set +a; }
+if [ "${ALPHABRAIN_UI_LAUNCH:-0}" != "1" ] && [ -f .env ]; then
+    set -a; source .env; set +a
+fi
 export PYTHONPATH="${PWD}${PYTHONPATH:+:${PYTHONPATH}}"
 
 export LIBERO_PYTHON="${LIBERO_PYTHON:-/path/to/envs/libero/bin/python}"
@@ -69,7 +71,7 @@ else
     RUN_TAG="rlt_a_ppo_qwen_t${TASK_ID}"
 fi
 TIMESTAMP=$(date +%m%d_%H%M)
-OUTPUT_DIR="results/rlt_training/${RUN_TAG}_${TIMESTAMP}/rl_onpolicy"
+OUTPUT_DIR="${OUTPUT_DIR:-results/rlt_training/${RUN_TAG}_${TIMESTAMP}/rl_onpolicy}"
 mkdir -p "${OUTPUT_DIR}"
 TRAIN_LOG="${OUTPUT_DIR}/train.log"
 

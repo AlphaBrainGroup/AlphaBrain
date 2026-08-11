@@ -19,6 +19,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -42,6 +43,7 @@ from AlphaBrain.training.trainer_utils.trainer_tools import (
 )
 from AlphaBrain.training.trainer_utils.config_tracker import wrap_config, AccessTrackedConfig
 from AlphaBrain.training.trainer_utils.finetune_config import build_config_from_finetune
+from AlphaBrain.training.trainer_utils.wandb_integration import configure_wandb_module
 from AlphaBrain.model.framework import build_framework
 from AlphaBrain.dataloader import build_dataloader
 
@@ -51,6 +53,8 @@ from AlphaBrain.model.modules.action_model.stdp import (
     STDPLearner,
     RSTDPOptimizer,
 )
+
+configure_wandb_module(wandb)
 
 deepspeed_plugin = DeepSpeedPlugin()
 accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin)
@@ -236,10 +240,18 @@ class STDPTrainer(TrainerUtils):
 
         pretrained_checkpoint = getattr(self.config.trainer, "pretrained_checkpoint", None)
         is_resume = getattr(self.config.trainer, "is_resume", False)
-        self.resume_from_checkpoint = pretrained_checkpoint
+        explicit_resume_checkpoint = getattr(self.config.trainer, "resume_checkpoint", None)
+        self.resume_from_checkpoint = explicit_resume_checkpoint or pretrained_checkpoint
 
         if is_resume:
-            resume_from_checkpoint, self.completed_steps = self._get_latest_checkpoint(self.checkpoint_dir)
+            if explicit_resume_checkpoint:
+                resume_from_checkpoint = os.path.abspath(os.path.expanduser(str(explicit_resume_checkpoint)))
+                if not os.path.exists(resume_from_checkpoint):
+                    raise RuntimeError(f"Explicit resume checkpoint does not exist: {resume_from_checkpoint}")
+                match = re.search(r"steps[_-](\d+)", os.path.basename(resume_from_checkpoint))
+                self.completed_steps = int(match.group(1)) if match else 0
+            else:
+                resume_from_checkpoint, self.completed_steps = self._get_latest_checkpoint(self.checkpoint_dir)
             if resume_from_checkpoint:
                 self.resume_from_checkpoint = resume_from_checkpoint
                 self.model = self.load_pretrained_backbones(self.model, self.resume_from_checkpoint, reload_modules=None)

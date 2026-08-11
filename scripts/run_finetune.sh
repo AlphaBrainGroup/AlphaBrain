@@ -31,7 +31,7 @@ error()   { echo -e "${C_BOLD_RED}[error]${C_RESET} $*" >&2; }
 success() { echo -e "${C_BOLD_GREEN}[ok]${C_RESET} $*"; }
 
 # 加载环境变量（如果存在）
-if [ -f .env ]; then
+if [ "${ALPHABRAIN_UI_LAUNCH:-0}" != "1" ] && [ -f .env ]; then
     set -a; source .env; set +a
 fi
 

@@ -20,6 +20,10 @@ from AlphaBrain.training.reinforcement_learning.envs.libero_env import MAX_STEPS
 from AlphaBrain.training.reinforcement_learning.algos.VLAPPO import (
     VLAPolicy, VLAValueHead, vla_ppo_collect, vla_ppo_loss,
 )
+from AlphaBrain.training.trainer_utils.local_metrics import append_local_metrics
+from AlphaBrain.training.trainer_utils.wandb_integration import configure_wandb_module
+
+configure_wandb_module(wandb)
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +171,13 @@ def run_rl_vla_ppo(args):
                     f"vf={log_entry['vf_loss']:.4f} ratio={log_entry['ratio_mean']:.3f} "
                     f"clip_frac={log_entry['clip_frac']:.3f} "
                     f"return={log_entry['return_mean']:.3f}")
+
+        append_local_metrics(
+            args.output_dir,
+            log_entry,
+            phase="vla_ppo",
+            iteration=iteration,
+        )
 
         if args.use_wandb:
             wandb.log({

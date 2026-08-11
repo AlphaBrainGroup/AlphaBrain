@@ -38,6 +38,10 @@ from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_encoder
 from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer import (
     action_token_collect_group, action_token_grpo_loss,
 )
+from AlphaBrain.training.trainer_utils.local_metrics import append_local_metrics
+from AlphaBrain.training.trainer_utils.wandb_integration import configure_wandb_module
+
+configure_wandb_module(wandb)
 
 logger = logging.getLogger(__name__)
 
@@ -272,6 +276,13 @@ def run_rl_grpo(args):
                         f"kl={entry['kl']:.4f} ratio={entry['ratio_mean']:.3f} "
                         f"clip_frac={entry['clip_frac']:.3f} "
                         f"groups_signal={entry['n_groups_with_signal']:.1f}")
+
+            append_local_metrics(
+                args.output_dir,
+                entry,
+                phase="grpo",
+                iteration=iteration,
+            )
 
             if args.use_wandb:
                 wandb_log = {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "AlphaBrain Codebase Navigation"
+  short_description: "Find AlphaBrain code, configs, APIs, and defaults"
+  default_prompt: "Use $alphabrain-codebase-nav to locate the relevant AlphaBrain code, configuration, or API contract."

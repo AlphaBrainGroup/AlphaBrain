@@ -73,6 +73,22 @@ def _get_base_vlm_path(framework_cfg) -> str | None:
     return getattr(vlm_block, 'base_vlm', None)
 
 
+def _apply_runtime_vlm_overrides(config, base_vlm_path=None, attention_backend=None) -> None:
+    """Apply in-memory deployment overrides without mutating checkpoint files."""
+    cfg_key = _detect_vlm_cfg_key(config.framework)
+    if cfg_key is None:
+        if base_vlm_path or attention_backend:
+            logger.warning("VLM runtime override ignored: framework has no registered VLM block")
+        return
+    vlm_block = getattr(config.framework, cfg_key)
+    if base_vlm_path:
+        vlm_block.base_vlm = str(Path(base_vlm_path).expanduser().resolve())
+        logger.info("Using deployment base VLM override: %s", vlm_block.base_vlm)
+    if attention_backend:
+        vlm_block.attn_implementation = str(attention_backend)
+        logger.info("Using deployment attention backend: %s", attention_backend)
+
+
 class BaseFramework(PreTrainedModel):
     """
     Lightweight base class for higher-level VLA model assemblies.
@@ -96,6 +112,8 @@ class BaseFramework(PreTrainedModel):
     def from_pretrained(
         cls,
         pretrained_checkpoint: str,
+        base_vlm_path: str | None = None,
+        attention_backend: str | None = None,
         **kwargs,
     ) -> None:
         """
@@ -128,6 +146,7 @@ class BaseFramework(PreTrainedModel):
 
             config = dict_to_namespace(model_config)
             config.trainer.pretrained_checkpoint = None
+            _apply_runtime_vlm_overrides(config, base_vlm_path, attention_backend)
 
             # 单次加载优化 - 如果checkpoint目录包含vlm_pretrained/（兼容旧名qwen_pretrained/），
             # 直接从中加载tokenizer/config，用meta device创建模型骨架，由后续load_state_dict一次性加载所有权重
@@ -212,6 +231,7 @@ class BaseFramework(PreTrainedModel):
             config = dict_to_namespace(model_config)
             model_config = config
             model_config.trainer.pretrained_checkpoint = None
+            _apply_runtime_vlm_overrides(model_config, base_vlm_path, attention_backend)
             # FrameworkModel = cls(config=model_config, **kwargs) # TODO find cls by config
             FrameworkModel = build_framework(cfg=model_config)
             # set for action un-norm

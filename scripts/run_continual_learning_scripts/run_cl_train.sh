@@ -158,7 +158,7 @@ if [ -z "$PORT" ]; then
 fi
 
 # ---------- load .env ----------
-if [ -f "$REPO_ROOT/.env" ]; then
+if [ "${ALPHABRAIN_UI_LAUNCH:-0}" != "1" ] && [ -f "$REPO_ROOT/.env" ]; then
     set -a; # shellcheck disable=SC1091
     source "$REPO_ROOT/.env"; set +a
 fi

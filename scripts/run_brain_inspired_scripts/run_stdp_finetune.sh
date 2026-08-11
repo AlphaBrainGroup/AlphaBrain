@@ -41,7 +41,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 cd "$PROJECT_ROOT"
 
-[ -f .env ] && { set -a; source .env; set +a; }
+if [ "${ALPHABRAIN_UI_LAUNCH:-0}" != "1" ] && [ -f .env ]; then
+    set -a; source .env; set +a
+fi
 
 # ---------- defaults ----------
 CONFIG_YAML="${CONFIG_YAML:-configs/finetune_config.yaml}"

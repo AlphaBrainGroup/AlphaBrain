@@ -1,0 +1,4 @@
+interface:
+  display_name: "AlphaBrain Evaluation"
+  short_description: "Run and verify AlphaBrain benchmark evaluations"
+  default_prompt: "Use $alphabrain-evaluation to preflight, run, and verify an AlphaBrain benchmark evaluation."

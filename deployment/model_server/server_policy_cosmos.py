@@ -21,7 +21,6 @@ import os
 import socket
 
 import numpy as np
-import torch
 
 from deployment.model_server.tools.websocket_policy_server import WebsocketPolicyServer
 
@@ -100,7 +99,7 @@ class CosmosPolicyServer:
                 return path
         raise FileNotFoundError(f"No DIT checkpoint found in {ckpt_dir}")
 
-    def _build_config(self, pretrained_dir: str, t5_path: str, ckpt_dir: str = None):
+    def _build_config(self, pretrained_dir: str, t5_path: str, ckpt_dir: str | None = None):
         """Build a minimal config namespace for CosmosPolicy."""
         from types import SimpleNamespace
 
@@ -194,7 +193,10 @@ class CosmosPolicyServer:
         if batch_images is not None:
             # Cosmos eval client sends images with H flip only ([::-1]).
             # Pass through as-is. Only upscale if client sent 224x224.
-            batch_images = [[np.ascontiguousarray(_upscale(img) if img is not None else img) for img in imgs] for imgs in batch_images]
+            batch_images = [
+                [np.ascontiguousarray(_upscale(img) if img is not None else img) for img in imgs]
+                for imgs in batch_images
+            ]
 
         # Extract primary and wrist images
         primary_images = []
@@ -279,10 +281,13 @@ def main(args) -> None:
 
     server = WebsocketPolicyServer(
         policy=policy,
-        host="0.0.0.0",
+        host=args.host,
         port=args.port,
         idle_timeout=args.idle_timeout,
         metadata={"env": "libero", "model": "CosmosPolicy"},
+        api_key_sha256=args.api_key_sha256,
+        controller_api_key_sha256=args.controller_api_key_sha256,
+        deployment_id=args.deployment_id,
     )
     logging.info("Cosmos policy server running on port %d ...", args.port)
     server.serve_forever()
@@ -302,6 +307,7 @@ def build_argparser():
         default="data/pretrained_models/Cosmos-Predict2-2B-Video2World",
         help="Path to base Cosmos Predict2 model (for VAE weights)",
     )
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="Address to bind (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=10093)
     parser.add_argument(
         "--idle_timeout",
@@ -309,6 +315,17 @@ def build_argparser():
         default=1800,
         help="Idle timeout in seconds, -1 means never close",
     )
+    parser.add_argument(
+        "--api-key-sha256",
+        default=None,
+        help="Optional SHA-256 hex digest of the API key; omit to retain unauthenticated legacy mode",
+    )
+    parser.add_argument(
+        "--controller-api-key-sha256",
+        default=None,
+        help="Optional SHA-256 digest for the non-user-facing UI controller credential",
+    )
+    parser.add_argument("--deployment-id", default=None, help="Deployment identifier reported by GET /healthz")
     return parser
 
 

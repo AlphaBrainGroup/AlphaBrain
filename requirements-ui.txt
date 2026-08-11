@@ -1,0 +1,20 @@
+# Runtime dependencies for the AlphaBrain Web UI.
+# This file is sufficient for a lightweight UI-only Python >=3.10 environment.
+# Model training and managed model servers still use their own runtime environment.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+sqlalchemy>=2.0,<3
+alembic>=1.13,<2
+pydantic>=2.9,<3
+argon2-cffi>=23.1,<26
+nvidia-ml-py>=12.560,<14
+psutil>=5.9,<8
+httpx[socks]>=0.27,<1
+numpy>=1.24,<3
+pillow>=10,<13
+PyYAML>=6,<7
+python-multipart>=0.0.9,<1
+websockets>=14,<17
+msgpack>=1,<2
+huggingface-hub>=0.28,<2
+wandb>=0.19,<1

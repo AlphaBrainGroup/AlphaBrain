@@ -1,0 +1,242 @@
+schema: alphabrain.reference-results
+schema_version: 1
+version: "2026.07.16.1"
+source_url: "https://www.alphabrain-platform.com/#features"
+source_asset: "https://www.alphabrain-platform.com/assets/index-o6bPS43T.js"
+captured_at: "2026-07-16T13:08:00+08:00"
+title: "AlphaBrain public website demo reference results"
+disclaimer: "Read-only values transcribed from the public website on the capture date. They are reference display data, not results reproduced or verified by the local UI. Compare only when benchmark and signature fields match."
+result_sets:
+  - id: neurovla_libero_2000_episodes
+    group: neurovla
+    category: benchmark_table
+    benchmark_id: libero
+    signature: {suite: libero_all, protocol: website_2000_episodes}
+    title: "NeuroVLA robust statistical results (2000 episodes total)"
+    kind: table
+    metrics:
+      - {id: libero_object, label: "LIBERO Object success rate", unit: percent, direction: higher}
+      - {id: libero_goal, label: "LIBERO Goal success rate", unit: percent, direction: higher}
+      - {id: libero_spatial, label: "LIBERO Spatial success rate", unit: percent, direction: higher}
+      - {id: libero_10, label: "LIBERO 10 success rate", unit: percent, direction: higher}
+      - {id: average, label: "Average success rate", unit: percent, direction: higher}
+    rows:
+      - id: neurovla
+        label: "NeuroVLA"
+        origin: "AlphaBrain website"
+        values: {libero_object: 99.0, libero_goal: 95.6, libero_spatial: 90.6, libero_10: 85.4, average: 92.7}
+        context: {episodes_total: 2000}
+    notes: "The website labels this as robust statistical results over 2000 total episodes."
+
+  - id: neurovla_rstdp_progress
+    group: neurovla
+    category: training_comparison
+    benchmark_id: libero
+    signature: {suite: libero_all, protocol: website_rstdp_progress}
+    title: "NeuroVLA backpropagation and R-STDP progress"
+    kind: table
+    metrics:
+      - {id: goal, label: "Goal", unit: percent, direction: higher}
+      - {id: spatial, label: "Spatial", unit: percent, direction: higher}
+      - {id: object, label: "Object", unit: percent, direction: higher}
+      - {id: long_10, label: "Long (10)", unit: percent, direction: higher}
+      - {id: average, label: "Average", unit: percent, direction: higher}
+    rows:
+      - {id: backprop_10k, label: "Backprop 10k", origin: "AlphaBrain website", values: {goal: 3, spatial: 22, object: 24, long_10: 0, average: 12}, context: {total_steps: "10k"}}
+      - {id: backprop_20k, label: "Backprop 20k", origin: "AlphaBrain website", values: {goal: 55, spatial: 65, object: 76, long_10: 6, average: 51}, context: {total_steps: "20k"}}
+      - {id: rstdp_2k, label: "+ R-STDP 2k", origin: "AlphaBrain website", values: {goal: 86, spatial: 88, object: 92, long_10: 36, average: 76}, context: {total_steps: "20k + 2k"}}
+      - {id: rstdp_6k, label: "+ R-STDP 6k", origin: "AlphaBrain website", values: {goal: 87, spatial: 93, object: 97, long_10: 49, average: 82}, context: {total_steps: "20k + 6k"}}
+      - {id: rstdp_10k, label: "+ R-STDP 10k", origin: "AlphaBrain website", values: {goal: 96, spatial: 89, object: 95, long_10: 56, average: 84}, context: {total_steps: "20k + 10k"}}
+
+  - id: libero_backbone_reference
+    group: multiple_backbones
+    category: benchmark_table
+    benchmark_id: libero
+    signature: {suite: libero_all, protocol: website_backbone_table}
+    title: "LIBERO multiple-backbone reference table"
+    kind: table
+    metrics:
+      - {id: goal, label: "LIBERO Goal", unit: percent, direction: higher}
+      - {id: spatial, label: "LIBERO Spatial", unit: percent, direction: higher}
+      - {id: object, label: "LIBERO Object", unit: percent, direction: higher}
+      - {id: long_10, label: "LIBERO 10 (Long)", unit: percent, direction: higher}
+    rows:
+      - {id: openpi_pi05_official, label: "OpenPi Pi05 (official)", origin: "Official value displayed by website", values: {goal: 98.0, spatial: 98.8, object: 98.2, long_10: 92.4}, context: {steps: "30k", finetune: multi_task}}
+      - {id: alphabrain_paligemma_pi05, label: "AlphaBrain PaliGemmaPi05 (pretrained)", origin: "AlphaBrain website", values: {goal: 97.8, spatial: 99.0, object: 98.0, long_10: 93.2}, context: {steps: "22k", finetune: multi_task}}
+      - {id: llama_oft, label: "LlamaOFT", origin: "AlphaBrain website", values: {goal: 92.4, spatial: 94.0, object: 99.4, long_10: 88.6}, context: {steps: "30k", finetune: multi_task}}
+      - {id: paligemma_oft, label: "PaliGemmaOFT", origin: "AlphaBrain website", values: {goal: 95.8, spatial: 95.0, object: 97.8, long_10: 83.2}, context: {steps: "30k", finetune: single_task}}
+
+  - id: continual_learning_libero_reference
+    group: continual_learning
+    category: benchmark_table
+    benchmark_id: libero
+    signature: {suite: libero_all, protocol: website_continual_table}
+    title: "Continual-learning tab LIBERO reference table"
+    kind: table
+    metrics:
+      - {id: goal, label: "LIBERO Goal", unit: percent, direction: higher}
+      - {id: spatial, label: "LIBERO Spatial", unit: percent, direction: higher}
+      - {id: object, label: "LIBERO Object", unit: percent, direction: higher}
+      - {id: long_10, label: "LIBERO 10 (Long)", unit: percent, direction: higher}
+    rows:
+      - {id: openpi_pi05_official, label: "OpenPi Pi05 (official)", origin: "Official value displayed by website", values: {goal: 98.0, spatial: 98.8, object: 98.2, long_10: 92.4}, context: {steps: "30k", finetune: multi_task}}
+      - {id: alphabrain_paligemma_pi05, label: "AlphaBrain PaliGemmaPi05 (pretrained)", origin: "AlphaBrain website", values: {goal: 97.8, spatial: 99.0, object: 98.0, long_10: 93.2}, context: {steps: "22k", finetune: multi_task}}
+      - {id: llama_oft, label: "LlamaOFT", origin: "AlphaBrain website", values: {goal: 92.4, spatial: 94.0, object: 99.4, long_10: 88.6}, context: {steps: "30k", finetune: multi_task}}
+      - {id: paligemma_oft, label: "PaliGemmaOFT", origin: "AlphaBrain website", values: {goal: 95.8, spatial: 95.0, object: 97.8, long_10: 83.2}, context: {steps: "30k", finetune: single_task}}
+    notes: "The website explains NBT in this tab but does not display a numeric NBT value; no NBT number is inferred here."
+
+  - id: world_action_model_libero
+    group: world_model
+    category: benchmark_table
+    benchmark_id: libero
+    signature: {suite: libero_all, protocol: website_world_action_model}
+    title: "World Action Model LIBERO checkpoints"
+    kind: table
+    metrics:
+      - {id: goal, label: "Goal", unit: percent, direction: higher}
+      - {id: spatial, label: "Spatial", unit: percent, direction: higher}
+      - {id: object, label: "Object", unit: percent, direction: higher}
+      - {id: long_10, label: "10", unit: percent, direction: higher}
+      - {id: average, label: "Average", unit: percent, direction: higher}
+    rows:
+      - {id: official_40k, label: "Official 40K", origin: "Official value displayed by website", values: {goal: 98.0, spatial: 98.0, object: 100.0, long_10: 98.0, average: 98.0}, context: {steps: "40k"}}
+      - {id: b20z_5k, label: "B20Z 5K", origin: "AlphaBrain website", values: {goal: 96.0, spatial: 92.0, object: 92.0, long_10: 90.0, average: 92.5}, context: {steps: "5k"}}
+      - {id: b20z_10k, label: "B20Z 10K", origin: "AlphaBrain website", values: {goal: 96.0, spatial: 96.0, object: 96.0, long_10: 94.0, average: 95.5}, context: {steps: "10k"}}
+
+  - id: robocasa365_reference
+    group: robocasa365
+    category: benchmark_table
+    benchmark_id: robocasa365
+    signature: {suite: robocasa365_all, protocol: website_reference_table}
+    title: "RoboCasa365 reference comparison"
+    kind: table
+    metrics:
+      - {id: atomic_seen, label: "Atomic-Seen (18)", unit: percent, direction: higher}
+      - {id: composite_seen, label: "Composite-Seen (16)", unit: percent, direction: higher}
+      - {id: composite_unseen, label: "Composite-Unseen (16)", unit: percent, direction: higher}
+      - {id: average, label: "Average", unit: percent, direction: higher}
+    rows:
+      - {id: groot_target_official, label: "GR00T target-only", origin: "Official value displayed by website", values: {atomic_seen: 59.1, composite_seen: 34.6, composite_unseen: 30.8, average: 43.7}, context: {training: target_only}}
+      - {id: groot_pretrain_target_official, label: "GR00T pretrain + target", origin: "Official value displayed by website", values: {atomic_seen: 68.6, composite_seen: 40.6, composite_unseen: 42.1, average: 51.1}, context: {training: pretrain_plus_target}}
+      - {id: qwengroot_without_state, label: "QwenGR00T without state", origin: "AlphaBrain website", values: {atomic_seen: 75.1, composite_seen: 36.1, composite_unseen: 37.6, average: 50.6}, context: {training: target_only}}
+      - {id: qwen_oft, label: "QwenOFT", origin: "AlphaBrain website", values: {atomic_seen: 66.4, composite_seen: 14.4, composite_unseen: 17.8, average: 34.2}, context: {training: target_only}}
+
+  - id: rl_token_task_curves
+    group: rl_token
+    category: iteration_series
+    benchmark_id: libero
+    signature: {suite: libero_goal, evaluation_kind: rl_iterations, protocol: website_rl_figure_1}
+    title: "RL Token per-task success-rate curves"
+    kind: series
+    metrics:
+      - {id: success_rate, label: "Success rate", unit: percent, direction: higher}
+    series:
+      - id: task0_shared
+        label: "Task 0 shared"
+        origin: "AlphaBrain website"
+        context: {task_id: 0, share: true}
+        points:
+          - {step: 0, values: {success_rate: 32}}
+          - {step: 25, values: {success_rate: 32}}
+          - {step: 50, values: {success_rate: 36}}
+          - {step: 75, values: {success_rate: 42}}
+          - {step: 100, values: {success_rate: 60}}
+          - {step: 125, values: {success_rate: 64}}
+          - {step: 150, values: {success_rate: 56}}
+          - {step: 175, values: {success_rate: 72}}
+          - {step: 200, values: {success_rate: 58}}
+          - {step: 225, values: {success_rate: 70}}
+          - {step: 250, values: {success_rate: 60}}
+          - {step: 275, values: {success_rate: 68}}
+          - {step: 300, values: {success_rate: 86}}
+      - id: task0_without_share
+        label: "Task 0 without share"
+        origin: "AlphaBrain website"
+        context: {task_id: 0, share: false}
+        points:
+          - {step: 0, values: {success_rate: 32}}
+          - {step: 25, values: {success_rate: 36}}
+          - {step: 50, values: {success_rate: 26}}
+          - {step: 75, values: {success_rate: 58}}
+          - {step: 100, values: {success_rate: 48}}
+          - {step: 125, values: {success_rate: 64}}
+          - {step: 150, values: {success_rate: 84}}
+          - {step: 175, values: {success_rate: 86}}
+          - {step: 200, values: {success_rate: 84}}
+          - {step: 225, values: {success_rate: 74}}
+          - {step: 250, values: {success_rate: 84}}
+          - {step: 275, values: {success_rate: 74}}
+          - {step: 300, values: {success_rate: 92}}
+      - id: task1
+        label: "Task 1"
+        origin: "AlphaBrain website"
+        context: {task_id: 1}
+        points:
+          - {step: 0, values: {success_rate: 82}}
+          - {step: 25, values: {success_rate: 88}}
+          - {step: 50, values: {success_rate: 82}}
+          - {step: 75, values: {success_rate: 94}}
+          - {step: 100, values: {success_rate: 92}}
+          - {step: 125, values: {success_rate: 90}}
+          - {step: 150, values: {success_rate: 94}}
+          - {step: 175, values: {success_rate: 90}}
+          - {step: 200, values: {success_rate: 94}}
+          - {step: 225, values: {success_rate: 94}}
+          - {step: 250, values: {success_rate: 98}}
+          - {step: 275, values: {success_rate: 94}}
+          - {step: 300, values: {success_rate: 96}}
+      - id: task3
+        label: "Task 3"
+        origin: "AlphaBrain website"
+        context: {task_id: 3}
+        points:
+          - {step: 0, values: {success_rate: 22}}
+          - {step: 25, values: {success_rate: 2}}
+          - {step: 50, values: {success_rate: 0}}
+          - {step: 75, values: {success_rate: 0}}
+          - {step: 100, values: {success_rate: 4}}
+          - {step: 125, values: {success_rate: 0}}
+          - {step: 150, values: {success_rate: 0}}
+          - {step: 175, values: {success_rate: 8}}
+          - {step: 200, values: {success_rate: 2}}
+          - {step: 225, values: {success_rate: 6}}
+          - {step: 250, values: {success_rate: 0}}
+          - {step: 275, values: {success_rate: 6}}
+          - {step: 300, values: {success_rate: 8}}
+
+  - id: rl_token_trajectory_curves
+    group: rl_token
+    category: iteration_series
+    benchmark_id: libero
+    signature: {suite: libero_goal, evaluation_kind: rl_iterations, protocol: website_rl_figure_2}
+    title: "RL Token trajectory-count success-rate curves"
+    kind: series
+    metrics:
+      - {id: success_rate, label: "Success rate", unit: percent, direction: higher}
+    series:
+      - id: trajectory_5
+        label: "5 trajectories"
+        origin: "AlphaBrain website"
+        context: {trajectory_count: 5}
+        points:
+          - {step: 0, values: {success_rate: 68.5}}
+          - {step: 50, values: {success_rate: 69.5}}
+          - {step: 100, values: {success_rate: 75.0}}
+          - {step: 150, values: {success_rate: 81.5}}
+          - {step: 200, values: {success_rate: 87.0}}
+          - {step: 250, values: {success_rate: 88.5}}
+          - {step: 300, values: {success_rate: 90.0}}
+          - {step: 350, values: {success_rate: 91.0}}
+      - id: trajectory_1
+        label: "1 trajectory"
+        origin: "AlphaBrain website"
+        context: {trajectory_count: 1}
+        points:
+          - {step: 0, values: {success_rate: 32.5}}
+          - {step: 50, values: {success_rate: 40.5}}
+          - {step: 100, values: {success_rate: 45.5}}
+          - {step: 150, values: {success_rate: 47.0}}
+          - {step: 200, values: {success_rate: 52.5}}
+          - {step: 250, values: {success_rate: 52.5}}
+          - {step: 300, values: {success_rate: 54.5}}
+          - {step: 350, values: {success_rate: 54.0}}

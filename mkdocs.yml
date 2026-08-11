@@ -106,6 +106,8 @@ nav:
   - Quickstart:
     - quickstart/index.md
     - Installation: quickstart/installation.md
+    - Web UI: quickstart/web_ui.md
+    - Remote Training: quickstart/remote_training.md
     - Baseline VLA: quickstart/baselineVLA.md
     - NeuroVLA: quickstart/neurovla.md
     - RL-Token: quickstart/rl_token.md

@@ -25,7 +25,9 @@
 set -euo pipefail
 cd "${ALPHABRAIN_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 
-[ -f .env ] && { set -a; source .env; set +a; }
+if [ "${ALPHABRAIN_UI_LAUNCH:-0}" != "1" ] && [ -f .env ]; then
+    set -a; source .env; set +a
+fi
 export PYTHONPATH="${PWD}${PYTHONPATH:+:${PYTHONPATH}}"
 
 export LIBERO_PYTHON="${LIBERO_PYTHON:-/path/to/envs/libero/bin/python}"
@@ -36,12 +38,15 @@ export MUJOCO_GL="${MUJOCO_GL:-egl}"
 GPU_ID=${1:-0}
 TASK_ID=${TASK_ID:-0}
 PPO_EPOCHS=${PPO_EPOCHS:-2}
-G=${G:-8}
-NUM_ENVS=${NUM_ENVS:-4}
+G=${G_PER_TASK:-${G:-8}}
+NUM_ENVS=${NUM_ENVS_PER_TASK:-${NUM_ENVS:-4}}
 MICRO_BATCH=${MICRO_BATCH:-2}
 LR_VLA=${LR_VLA:-1e-5}
 MAX_ITER=${MAX_ITER:-30}
 EVAL_INTERVAL=${EVAL_INTERVAL:-5}
+TRAIN_GPU=${TRAIN_GPU:-0}
+PYTHON_CMD=(python)
+if [ "${ALPHABRAIN_UI_LAUNCH:-0}" != "1" ]; then PYTHON_CMD=(env "CUDA_VISIBLE_DEVICES=${GPU_ID}" python); fi
 
 # Prefer 1traj ckpt (faster experiments); fall back to 5traj.
 if [ -d "results/training/0324-zh-QwenOFT-1traj-libero_goal/final_model" ]; then
@@ -55,7 +60,7 @@ CKPT_PATH="${CKPT_PATH:-${DEFAULT_CKPT}}"
 
 TIMESTAMP=$(date +%m%d_%H%M)
 RUN_TAG="vla_ppo_qwen_t${TASK_ID}"
-OUTPUT_DIR="results/rlt_training/${RUN_TAG}_${TIMESTAMP}/vla_ppo"
+OUTPUT_DIR="${OUTPUT_DIR:-results/rlt_training/${RUN_TAG}_${TIMESTAMP}/vla_ppo}"
 mkdir -p "${OUTPUT_DIR}"
 TRAIN_LOG="${OUTPUT_DIR}/train.log"
 
@@ -73,9 +78,7 @@ echo "WARN: full-VLA PPO is memory + compute heavy."
 echo "      Expect ~50 GB GPU mem and ~30-60 min/iter."
 echo "============================================================"
 
-export CUDA_VISIBLE_DEVICES=${GPU_ID}
-
-python -u AlphaBrain/training/reinforcement_learning/trainers/train.py \
+"${PYTHON_CMD[@]}" -u AlphaBrain/training/reinforcement_learning/trainers/train.py \
     --phase vla_ppo \
     --ckpt_path ${CKPT_PATH} \
     --output_dir ${OUTPUT_DIR} \
@@ -90,7 +93,7 @@ python -u AlphaBrain/training/reinforcement_learning/trainers/train.py \
     --gamma 0.99 --gae_lambda 0.95 --max_grad_norm 1.0 \
     --max_iter ${MAX_ITER} --eval_interval ${EVAL_INTERVAL} \
     --save_interval 5 --num_steps_wait 10 \
-    --train_gpu 0 --seed 42 \
+    --train_gpu "${TRAIN_GPU}" --seed 42 \
     --use_wandb --wandb_project AlphaBrain_RLT \
     --run_name "${RUN_TAG}" --log_interval 1 \
     2>&1 | tee "${TRAIN_LOG}"

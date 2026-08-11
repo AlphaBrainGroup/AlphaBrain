@@ -67,11 +67,15 @@ from AlphaBrain.training.continual_learning.datasets.task_sequences import (
 )
 from AlphaBrain.model.framework import build_framework
 from AlphaBrain.training.trainer_utils.config_tracker import AccessTrackedConfig, wrap_config
+from AlphaBrain.training.trainer_utils.local_metrics import append_local_metrics
 from AlphaBrain.training.trainer_utils.trainer_tools import (
     TrainerUtils,
     build_param_lr_groups,
     normalize_dotlist_args,
 )
+from AlphaBrain.training.trainer_utils.wandb_integration import configure_wandb_module
+
+configure_wandb_module(wandb)
 
 deepspeed_plugin = DeepSpeedPlugin()
 accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin)
@@ -453,9 +457,17 @@ class ContinualVLATrainer(TrainerUtils):
 
         pretrained_checkpoint = getattr(cfg.trainer, "pretrained_checkpoint", None)
         is_resume = getattr(cfg.trainer, "is_resume", False)
+        explicit_resume_checkpoint = getattr(cfg.trainer, "resume_checkpoint", None)
 
         if is_resume:
-            resume_path, self.completed_steps = self._get_latest_checkpoint(self.checkpoint_dir)
+            if explicit_resume_checkpoint:
+                resume_path = os.path.abspath(os.path.expanduser(str(explicit_resume_checkpoint)))
+                if not os.path.exists(resume_path):
+                    raise RuntimeError(f"Explicit resume checkpoint does not exist: {resume_path}")
+                suffix = Path(resume_path).name.replace("steps_", "").replace("steps-", "")
+                self.completed_steps = int(suffix) if suffix.isdigit() else 0
+            else:
+                resume_path, self.completed_steps = self._get_latest_checkpoint(self.checkpoint_dir)
             if resume_path:
                 self.model = self.load_pretrained_backbones(
                     self.model, resume_path, reload_modules=None
@@ -562,6 +574,12 @@ class ContinualVLATrainer(TrainerUtils):
             metrics["global_step"] = self.completed_steps
             if getattr(self, "_use_wandb", False):
                 wandb.log(metrics, step=self.completed_steps)
+            append_local_metrics(
+                self.config.output_dir,
+                metrics,
+                phase="continual_learning",
+                step=self.completed_steps,
+            )
             # Tag every step line with the active CL method so a glance at
             # stdout tells you which algorithm produced the numbers.
             # Tag goes to stdout only — we don't send it to wandb so

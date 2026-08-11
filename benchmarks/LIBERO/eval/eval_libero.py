@@ -25,6 +25,7 @@ from libero.libero.envs import OffScreenRenderEnv
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from benchmarks.LIBERO.model2libero_interface import M1Inference
+from alphabrain_ui.evaluation_result import EvaluationResultWriter, resolve_result_path
 from typing import Union
 
 
@@ -81,12 +82,14 @@ class Args:
     num_steps_wait: int = 10  # Number of steps to wait for objects to stabilize i n sim
     num_trials_per_task: int = 10  # Number of rollouts per task
     task_ids: str = ""  # Optional comma-separated suite task IDs to evaluate (e.g. "4" or "0,4,7"); empty = all
+    task_limit: int = 0  # Evaluate at most this many selected tasks; 0 = all
 
 
     #################################################################################################################
     # Utils
     #################################################################################################################
     video_out_path: str = "experiments/libero/logs"  # Path to save videos
+    result_out_path: str = ""  # Explicit evaluation-result-v1.json path (optional)
     predict_video: bool = False  # Output side-by-side predicted vs actual video
 
     seed: int = 7  # Random Seed (for reproducibility)
@@ -104,7 +107,33 @@ class Args:
 
 
 def eval_libero(args: Args) -> None:
+    result_path = resolve_result_path(args.result_out_path, args.video_out_path)
+    result_writer = EvaluationResultWriter(
+        result_path,
+        benchmark="libero",
+        checkpoint=args.pretrained_path,
+        suite={"name": args.task_suite_name, "task_ids": args.task_ids},
+        parameters={
+            "num_trials_per_task": args.num_trials_per_task,
+            "task_limit": args.task_limit,
+            "num_steps_wait": args.num_steps_wait,
+            "num_views": args.num_views,
+            "seed": args.seed,
+            "predict_video": args.predict_video,
+            "norm_mode": args.norm_mode,
+        },
+    )
+    try:
+        _eval_libero(args, result_writer)
+    except BaseException as exc:
+        result_writer.fail(f"{type(exc).__name__}: {exc}")
+        raise
+
+
+def _eval_libero(args: Args, result_writer: EvaluationResultWriter) -> None:
     logging.info(f"Arguments: {json.dumps(dataclasses.asdict(args), indent=4)}")
+    if args.num_trials_per_task <= 0:
+        raise ValueError("num_trials_per_task must be positive")
 
     # Set random seed
     np.random.seed(args.seed)
@@ -149,9 +178,15 @@ def eval_libero(args: Args) -> None:
         if args.task_ids
         else None
     )
+    if args.task_limit < 0:
+        raise ValueError("task_limit must be non-negative")
+    evaluated_tasks = 0
     for task_id in tqdm.tqdm(range(num_tasks_in_suite)):
         if filter_ids is not None and task_id not in filter_ids:
             continue
+        if args.task_limit and evaluated_tasks >= args.task_limit:
+            break
+        evaluated_tasks += 1
         # Get task
         task = task_suite.get_task(task_id)
 
@@ -164,6 +199,7 @@ def eval_libero(args: Args) -> None:
         # Start episodes
         task_episodes, task_successes = 0, 0
         for episode_idx in tqdm.tqdm(range(args.num_trials_per_task)):
+            episode_started_at = time.monotonic()
             logging.info(f"\n{_CC}Task:{_C0} {_CV}{task_description}{_C0}")
 
             # Reset environment
@@ -296,14 +332,18 @@ def eval_libero(args: Args) -> None:
             # Save a replay video of the episode
             suffix = "success" if done else "failure"
             task_segment = task_description.replace(" ", "_")
+            rollout_path = pathlib.Path(args.video_out_path) / (
+                f"rollout_{task_segment}_episode{episode_idx}_{suffix}.mp4"
+            )
+            video_path = None
             if not args.predict_video:
                 # Normal mode: output actual video only
                 imageio.mimwrite(
-                    pathlib.Path(args.video_out_path)
-                    / f"rollout_{task_segment}_episode{episode_idx}_{suffix}.mp4",
+                    rollout_path,
                     [np.asarray(x) for x in replay_images],
                     fps=10,
                 )
+                video_path = rollout_path
 
             if args.predict_video and len(predicted_images) > 0:
                 import cv2
@@ -395,10 +435,21 @@ def eval_libero(args: Args) -> None:
 
                 if sbs_frames:
                     imageio.mimwrite(
-                        pathlib.Path(args.video_out_path)
-                        / f"rollout_{task_segment}_episode{episode_idx}_{suffix}.mp4",
+                        rollout_path,
                         sbs_frames, fps=10,
                     )
+                    video_path = rollout_path
+
+            result_writer.record_episode(
+                task_id=f"{args.task_suite_name}:{task_id}",
+                task_name=str(task_description),
+                episode_index=episode_idx,
+                success=bool(done),
+                steps=step,
+                duration_seconds=time.monotonic() - episode_started_at,
+                video_path=video_path,
+                metadata={"suite_task_id": task_id},
+            )
             
             full_actions = np.stack(full_actions)
             # np.save(pathlib.Path(args.video_out_path) / f"rollout_{task_segment}_episode{episode_idx}_{suffix}.npy", full_actions)
@@ -431,11 +482,14 @@ def eval_libero(args: Args) -> None:
         # Explicitly close the environment to avoid EGL cleanup errors during GC
         env.close()
 
+    if total_episodes == 0:
+        raise ValueError("No LIBERO tasks were selected")
     _final_sr = float(total_successes) / float(total_episodes)
     _final_col = _sr_color(_final_sr)
     logging.info(
         f"{_CB}{'━' * 60}{_C0}"
     )
+    result_writer.finish()
     logging.info(
         f"{_CB}Total success rate: {_final_col}{_final_sr:.2f}{_C0} "
         f"{_CB}({_final_col}{_final_sr*100:.1f}%{_C0}{_CB}){_C0}"

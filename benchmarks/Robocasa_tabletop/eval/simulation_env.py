@@ -39,6 +39,7 @@ from benchmarks.Robocasa_tabletop.eval.wrappers.video_recording_wrapper import (
 )
 
 from benchmarks.Robocasa_tabletop.eval.model2robocasa_interface import PolicyWarper
+from alphabrain_ui.evaluation_result import EvaluationResultWriter, resolve_result_path
 
 
 @dataclass
@@ -72,6 +73,7 @@ class SimulationConfig:
     env_name: str
     n_episodes: int = 2
     n_envs: int = 1
+    seed: int = 7
     video: VideoConfig = field(default_factory=VideoConfig)
     multistep: MultiStepConfig = field(default_factory=MultiStepConfig)
 
@@ -140,7 +142,8 @@ class SimulationInferenceEnv:
         current_successes = [False] * config.n_envs
         episode_successes = []
         # Initial environment reset
-        obs, _ = self.env.reset()
+        # Gymnasium derives stable, distinct worker seeds from this base value.
+        obs, _ = self.env.reset(seed=config.seed)
         # Main simulation loop
         while completed_episodes < config.n_episodes:
             # Process observations and get actions from the model
@@ -163,7 +166,7 @@ class SimulationInferenceEnv:
                     current_lengths[env_idx] = 0
             obs = next_obs
         # Clean up
-        self.env.reset()
+        self.env.reset(seed=config.seed)
         self.env.close()
         self.env = None
         print(
@@ -172,7 +175,7 @@ class SimulationInferenceEnv:
         assert (
             len(episode_successes) >= config.n_episodes
         ), f"Expected at least {config.n_episodes} episodes, got {len(episode_successes)}"
-        return config.env_name, episode_successes
+        return config.env_name, episode_successes[: config.n_episodes]
 
     def _get_actions_from_model(self, observations: Dict[str, Any]) -> Dict[str, Any]:
         """Process observations and get actions from the model."""
@@ -192,7 +195,10 @@ def _create_single_env(config: SimulationConfig, idx: int) -> gym.Env:
     # Create base environment
     env = gym.make(config.env_name, enable_render=True)
     # Add video recording wrapper if needed (only for the first environment)
-    if config.video.video_dir is not None:
+    # Recorder processes cannot safely rename files in one shared directory.
+    # Metrics still cover every environment; replay video is optional and is
+    # captured from the first vector worker only.
+    if config.video.video_dir is not None and idx == 0:
         video_recorder = VideoRecorder.create_h264(
             fps=config.video.fps,
             codec=config.video.codec,
@@ -226,6 +232,7 @@ def run_evaluation(
     n_envs: int = 1,
     n_action_steps: int = 2,
     max_episode_steps: int = 100,
+    seed: int = 7,
 ) -> Tuple[str, List[bool]]:
     """
     Simple entry point to run a simulation evaluation.
@@ -245,6 +252,7 @@ def run_evaluation(
         env_name=env_name,
         n_episodes=n_episodes,
         n_envs=n_envs,
+        seed=seed,
         video=VideoConfig(video_dir=video_dir),
         multistep=MultiStepConfig(
             n_action_steps=n_action_steps, max_episode_steps=max_episode_steps
@@ -278,6 +286,7 @@ class Args:
     # Utils
     #################################################################################################################
     video_out_path: str = "experiments/1029_qwenGR00T_fourier_gr1_unified_1000_PnPMilkToMicrowaveClose_gpus_woPretrain_wState/checkpoints/steps_20000_pytorch_model.pt.log/gr1_unified/logs/PnPMilkToMicrowaveClose_GR1ArmsAndWaistFourierHands_Env"  # Path to save videos
+    result_out_path: str = ""  # Explicit evaluation-result-v1.json path (optional)
 
     seed: int = 7  # Random Seed (for reproducibility)
 
@@ -286,7 +295,32 @@ class Args:
 
 
 def eval_gr1_unified(args: Args) -> None:
+    result_path = resolve_result_path(args.result_out_path, args.video_out_path)
+    result_writer = EvaluationResultWriter(
+        result_path,
+        benchmark="robocasa_tabletop",
+        checkpoint=args.pretrained_path,
+        suite={"name": args.env_name, "env_name": args.env_name},
+        parameters={
+            "n_episodes": args.n_episodes,
+            "n_envs": args.n_envs,
+            "max_episode_steps": args.max_episode_steps,
+            "n_action_steps": args.n_action_steps,
+            "seed": args.seed,
+        },
+    )
+    try:
+        _eval_gr1_unified(args, result_writer)
+    except BaseException as exc:
+        result_writer.fail(f"{type(exc).__name__}: {exc}")
+        raise
+
+
+def _eval_gr1_unified(args: Args, result_writer: EvaluationResultWriter) -> None:
     logging.info(f"Arguments: {json.dumps(dataclasses.asdict(args), indent=4)}")
+    if args.n_episodes <= 0:
+        raise ValueError("n_episodes must be positive")
+    np.random.seed(args.seed)
     model = PolicyWarper(
         policy_ckpt_path=args.pretrained_path, # to get unnormalization stats
         host=args.host,
@@ -294,7 +328,10 @@ def eval_gr1_unified(args: Args) -> None:
         image_size=args.resize_size,
         n_action_steps=args.n_action_steps,
     )
-    run_evaluation(
+    video_dir = Path(args.video_out_path)
+    video_dir.mkdir(parents=True, exist_ok=True)
+    videos_before = set(video_dir.glob("*.mp4"))
+    _, episode_successes = run_evaluation(
         env_name=args.env_name,
         model=model,
         video_dir=args.video_out_path,
@@ -302,7 +339,26 @@ def eval_gr1_unified(args: Args) -> None:
         n_envs=args.n_envs,
         n_action_steps=args.n_action_steps,
         max_episode_steps=args.max_episode_steps,
+        seed=args.seed,
     )
+    videos_after = sorted(
+        set(video_dir.glob("*.mp4")) - videos_before,
+        key=lambda path: (path.stat().st_mtime_ns, path.name),
+    )
+    for episode_idx, success in enumerate(episode_successes):
+        result_writer.record_episode(
+            task_id=args.env_name,
+            task_name=args.env_name,
+            episode_index=episode_idx,
+            success=bool(success),
+            video_path=(
+                videos_after[episode_idx]
+                if args.n_envs == 1 and episode_idx < len(videos_after)
+                else None
+            ),
+            metadata={"seed": args.seed},
+        )
+    result_writer.finish()
 
 if __name__ == "__main__":
     tyro.cli(eval_gr1_unified)

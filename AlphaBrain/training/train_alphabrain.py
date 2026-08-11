@@ -57,6 +57,9 @@ from AlphaBrain.training.trainer_utils.trainer_tools import TrainerUtils
 from AlphaBrain.training.trainer_utils.trainer_tools import build_param_lr_groups
 from AlphaBrain.training.trainer_utils.config_tracker import wrap_config, AccessTrackedConfig
 from AlphaBrain.training.trainer_utils.finetune_config import build_config_from_finetune
+from AlphaBrain.training.trainer_utils.wandb_integration import configure_wandb_module
+
+configure_wandb_module(wandb)
 
 
 def _build_accelerator(gradient_accumulation_steps: int = 1) -> Accelerator:
@@ -437,11 +440,24 @@ class VLATrainer(TrainerUtils):
 
         pretrained_checkpoint = getattr(self.config.trainer, "pretrained_checkpoint", None)
         is_resume = getattr(self.config.trainer, "is_resume", False)
-        self.resume_from_checkpoint = pretrained_checkpoint
+        explicit_resume_checkpoint = getattr(self.config.trainer, "resume_checkpoint", None)
+        self.resume_from_checkpoint = explicit_resume_checkpoint or pretrained_checkpoint
 
         if is_resume:
             # === Resume: restore full training state ===
-            resume_from_checkpoint, self.completed_steps = self._get_latest_checkpoint(self.checkpoint_dir)
+            if explicit_resume_checkpoint:
+                resume_from_checkpoint = os.path.abspath(os.path.expanduser(str(explicit_resume_checkpoint)))
+                if not os.path.isdir(resume_from_checkpoint):
+                    raise RuntimeError(f"Explicit resume checkpoint does not exist: {resume_from_checkpoint}")
+                meta_path = os.path.join(resume_from_checkpoint, "resume_meta.json")
+                if not os.path.isfile(meta_path):
+                    raise RuntimeError(f"Explicit resume checkpoint is missing resume_meta.json: {resume_from_checkpoint}")
+                import json as _json
+                with open(meta_path) as f:
+                    explicit_meta = _json.load(f)
+                self.completed_steps = int(explicit_meta.get("completed_steps", explicit_meta.get("step", 0)))
+            else:
+                resume_from_checkpoint, self.completed_steps = self._get_latest_checkpoint(self.checkpoint_dir)
 
             if resume_from_checkpoint:
                 # Validate GPU count

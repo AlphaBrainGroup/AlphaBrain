@@ -38,6 +38,9 @@ from AlphaBrain.dataloader import build_dataloader
 from AlphaBrain.model.framework import build_framework
 from AlphaBrain.training.trainer_utils.config_tracker import AccessTrackedConfig, wrap_config
 from AlphaBrain.training.trainer_utils.trainer_tools import TrainerUtils, build_param_lr_groups, normalize_dotlist_args
+from AlphaBrain.training.trainer_utils.wandb_integration import configure_wandb_module
+
+configure_wandb_module(wandb)
 
 deepspeed_plugin = DeepSpeedPlugin()
 accelerator = Accelerator(deepspeed_plugin=deepspeed_plugin)
@@ -201,9 +204,14 @@ class VLATrainer(TrainerUtils):
 
         pretrained_checkpoint = getattr(self.config.trainer, "pretrained_checkpoint", None)
         is_resume = getattr(self.config.trainer, "is_resume", False)
-
-        if pretrained_checkpoint and is_resume:
-            self._load_checkpoint(self.config.resume_from_checkpoint)
+        resume_checkpoint = getattr(self.config.trainer, "resume_checkpoint", None) or getattr(
+            self.config, "resume_from_checkpoint", None
+        )
+        if is_resume:
+            if not resume_checkpoint:
+                raise RuntimeError("is_resume=True requires trainer.resume_checkpoint")
+            state_path = os.path.join(str(resume_checkpoint), "training_state")
+            self._load_checkpoint(state_path if os.path.isdir(state_path) else str(resume_checkpoint))
 
     def _load_checkpoint(self, checkpoint_path):
         """Load checkpoint."""

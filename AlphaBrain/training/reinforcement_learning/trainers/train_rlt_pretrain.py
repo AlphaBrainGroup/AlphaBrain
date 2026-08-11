@@ -46,6 +46,10 @@ from AlphaBrain.training.reinforcement_learning.algos.RLT import (
 from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer import (
     collect_observations_fast,
 )
+from AlphaBrain.training.trainer_utils.local_metrics import append_local_metrics
+from AlphaBrain.training.trainer_utils.wandb_integration import configure_wandb_module
+
+configure_wandb_module(wandb)
 
 logger = logging.getLogger(__name__)
 
@@ -369,17 +373,22 @@ def run_rlt_pretrain(args):
                     epoch_vla.append(vla_loss_val)
                 global_step += 1
 
-                if args.use_wandb and global_step % 10 == 0:
-                    wandb.log(
-                        {
-                            "pretrain/recon_loss_step": recon_loss.item(),
-                            "pretrain/vla_loss_step": vla_loss_val,
-                            "pretrain/total_loss_step": loss.item(),
-                            "pretrain/lr": optimizer.param_groups[0]["lr"],
-                            "pretrain/global_step": global_step,
-                        },
+                if global_step % 10 == 0:
+                    step_metrics = {
+                        "pretrain/recon_loss_step": recon_loss.item(),
+                        "pretrain/vla_loss_step": vla_loss_val,
+                        "pretrain/total_loss_step": loss.item(),
+                        "pretrain/lr": optimizer.param_groups[0]["lr"],
+                        "pretrain/global_step": global_step,
+                    }
+                    append_local_metrics(
+                        args.output_dir,
+                        step_metrics,
+                        phase="pretrain_rlt",
                         step=global_step,
                     )
+                    if args.use_wandb:
+                        wandb.log(step_metrics, step=global_step)
 
                 if (b_idx + 1) % max(1, len(loader) // 10) == 0:
                     logger.info(
@@ -405,15 +414,19 @@ def run_rlt_pretrain(args):
                 f"epoch {epoch+1}: L_ro={avg_ro:.6f}"
                 + (f", L_vla={avg_vla:.6f}" if finetune_vla else "")
             )
+            epoch_metrics = {
+                "pretrain/recon_loss_epoch": avg_ro,
+                "pretrain/vla_loss_epoch": avg_vla,
+                "pretrain/epoch": epoch + 1,
+            }
+            append_local_metrics(
+                args.output_dir,
+                epoch_metrics,
+                phase="pretrain_rlt",
+                step=global_step,
+            )
             if args.use_wandb:
-                wandb.log(
-                    {
-                        "pretrain/recon_loss_epoch": avg_ro,
-                        "pretrain/vla_loss_epoch": avg_vla,
-                        "pretrain/epoch": epoch + 1,
-                    },
-                    step=global_step,
-                )
+                wandb.log(epoch_metrics, step=global_step)
 
             if avg_ro < best_loss:
                 best_loss = avg_ro
@@ -469,15 +482,20 @@ def run_rlt_pretrain(args):
 
             epoch_losses.append(recon_loss.item())
             global_step += 1
-            if args.use_wandb and global_step % 10 == 0:
-                wandb.log(
-                    {
-                        "pretrain/recon_loss_step": recon_loss.item(),
-                        "pretrain/lr": optimizer.param_groups[0]["lr"],
-                        "pretrain/global_step": global_step,
-                    },
+            if global_step % 10 == 0:
+                step_metrics = {
+                    "pretrain/recon_loss_step": recon_loss.item(),
+                    "pretrain/lr": optimizer.param_groups[0]["lr"],
+                    "pretrain/global_step": global_step,
+                }
+                append_local_metrics(
+                    args.output_dir,
+                    step_metrics,
+                    phase="pretrain_rlt",
                     step=global_step,
                 )
+                if args.use_wandb:
+                    wandb.log(step_metrics, step=global_step)
             if (b_idx + 1) % max(1, n_batches // 5) == 0:
                 logger.info(
                     f"  epoch {epoch+1}/{args.pretrain_epochs} "
@@ -497,11 +515,18 @@ def run_rlt_pretrain(args):
 
         avg = float(np.mean(epoch_losses))
         logger.info(f"epoch {epoch+1}: L_ro={avg:.6f}")
+        epoch_metrics = {
+            "pretrain/recon_loss_epoch": avg,
+            "pretrain/epoch": epoch + 1,
+        }
+        append_local_metrics(
+            args.output_dir,
+            epoch_metrics,
+            phase="pretrain_rlt",
+            step=global_step,
+        )
         if args.use_wandb:
-            wandb.log(
-                {"pretrain/recon_loss_epoch": avg, "pretrain/epoch": epoch + 1},
-                step=global_step,
-            )
+            wandb.log(epoch_metrics, step=global_step)
 
         if avg < best_loss:
             best_loss = avg

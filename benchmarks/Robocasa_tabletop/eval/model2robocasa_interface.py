@@ -7,7 +7,7 @@ import numpy as np
 
 from deployment.model_server.tools.websocket_policy_client import WebsocketClientPolicy
 
-from examples.Robocasa_tabletop.eval_files.adaptive_ensemble import AdaptiveEnsembler
+from benchmarks.Robocasa_tabletop.eval.adaptive_ensemble import AdaptiveEnsembler
 from typing import Dict
 import numpy as np
 from pathlib import Path
@@ -270,5 +270,3 @@ class PolicyWarper:
             cos_state = np.cos(state[key])
             state[key] = np.concatenate([sin_state, cos_state], axis=-1)
         return state
-    
-    

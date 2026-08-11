@@ -1,0 +1,4 @@
+# Test-only dependencies for the AlphaBrain Web UI backend.
+-r requirements-ui.txt
+
+pytest>=8,<9

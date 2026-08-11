@@ -38,6 +38,10 @@ from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_actor_c
 )
 from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_encoder_decoder import ActionTokenEncoderDecoder
 from AlphaBrain.training.reinforcement_learning.algos.RLT_a.action_token_trainer import push_episodes_to_buffer
+from AlphaBrain.training.trainer_utils.local_metrics import append_local_metrics
+from AlphaBrain.training.trainer_utils.wandb_integration import configure_wandb_module
+
+configure_wandb_module(wandb)
 
 logger = logging.getLogger(__name__)
 
@@ -1005,6 +1009,13 @@ def run_rl_offpolicy(args):
             if per_task_eval_sr:
                 log_entry["per_task_eval_sr"] = per_task_eval_sr
             metrics_history.append(log_entry)
+
+            append_local_metrics(
+                args.output_dir,
+                log_entry,
+                phase="rl_offpolicy",
+                iteration=iteration,
+            )
 
             if args.use_wandb:
                 wandb_log = {
