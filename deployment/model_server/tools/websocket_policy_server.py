@@ -73,7 +73,7 @@ class WebsocketPolicyServer:
             try:
                 msg = msgpack_numpy.unpackb(await websocket.recv())
                 self._last_active = time.time()  # 每次收到消息刷新活跃时间
-                ret = self._route_message(msg)  # route message
+                ret = await asyncio.to_thread(self._route_message, msg)
                 await websocket.send(packer.pack(ret))
             except websockets.ConnectionClosed:
                 logging.info(f"Connection from {websocket.remote_address} closed")
